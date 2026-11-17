@@ -135,3 +135,5 @@ npm run format:check
 单元和集成测试覆盖无变化静默、正文版本去重、重复事件、重启计划、中断状态、会话创建/复用/压缩、同任务串行与独立任务并发、URL 编辑竞态、私网地址拒绝、API 认证与凭据脱敏。Playwright 覆盖中文工作台中的演示、追问、后续计划、任务创建/编辑/暂停/恢复、模型设置与移动布局。浏览器测试使用独立 `.data/ui-test-*` 目录，不碰默认工作台。
 
 [架构决策与 SDK 版本依据](docs/architecture.md) · [事项会话界面](docs/screenshots/research-thread.png)
+
+[PR 检查与审核流程](docs/ci.md)

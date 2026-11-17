@@ -13,7 +13,8 @@
     "test": "tsx --test tests/*.test.ts",
     "demo": "tsx src/demo.ts",
     "test:ui": "playwright test",
-    "format:check": "prettier --check src public tests playwright.config.ts package.json tsconfig.json"
+    "format:check": "prettier --check src public tests skills .github \"docs/**/*.md\" README.md playwright.config.ts package.json package-lock.json tsconfig.json",
+    "check:browser": "node --check public/app.js && node --check public/profile.js"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "1.5.2",

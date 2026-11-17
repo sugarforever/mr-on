@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
+const screenshotDir = process.env.CI
+  ? "test-results/screenshots"
+  : "docs/screenshots";
+mkdirSync(screenshotDir, { recursive: true });
 test("Chinese workspace supports demo, persistent reply routing, task lifecycle, followup and webhook example", async ({
   page,
 }) => {
@@ -21,9 +25,8 @@ test("Chinese workspace supports demo, persistent reply routing, task lifecycle,
     page.getByRole("button").filter({ hasText: "Pi 发布动态 有新变化" }),
   ).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
-  mkdirSync("docs/screenshots", { recursive: true });
   await page.screenshot({
-    path: "docs/screenshots/overview.png",
+    path: `${screenshotDir}/overview.png`,
     fullPage: true,
   });
   await page
@@ -44,7 +47,7 @@ test("Chinese workspace supports demo, persistent reply routing, task lifecycle,
     el.scrollTop = 0;
   });
   await page.screenshot({
-    path: "docs/screenshots/research-thread.png",
+    path: `${screenshotDir}/research-thread.png`,
     fullPage: true,
   });
   await page
@@ -99,7 +102,7 @@ test("mobile overview has no horizontal overflow", async ({ page }) => {
     )
     .toBe(true);
   await page.screenshot({
-    path: "docs/screenshots/mobile.png",
+    path: `${screenshotDir}/mobile.png`,
     fullPage: true,
   });
 });
@@ -129,7 +132,7 @@ test("proactive invitation opens a two-mode profile with editable memory and dur
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
-    path: "docs/screenshots/profile-chat.png",
+    path: `${screenshotDir}/profile-chat.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "暂时跳过", exact: true }).click();
@@ -153,7 +156,7 @@ test("proactive invitation opens a two-mode profile with editable memory and dur
   );
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.screenshot({
-    path: "docs/screenshots/profile.png",
+    path: `${screenshotDir}/profile.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "删除全部画像与交流记录" }).click();
