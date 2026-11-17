@@ -51,7 +51,9 @@ let view = "overview",
   selectedItem = null,
   lastData = "",
   refreshing = false,
-  toastTimer;
+  toastTimer,
+  lastConnectedAt = null,
+  connected = false;
 async function api(path, body, method = "POST") {
   const response = await fetch(
     path,
@@ -140,11 +142,16 @@ function render() {
     state.config.mode === "demo" ? "离线演示 · 无模型费用" : "真实模型";
   $("#mode-badge").className =
     "badge " + (state.config.mode === "demo" ? "amber" : "");
-  $("#service-label").textContent = state.runs.some(
-    (r) => r.status === "running",
-  )
-    ? "正在处理事件"
-    : "服务运行中";
+  $("#service-label").textContent = !connected
+    ? "连接中断 · 状态未知"
+    : !state.runtime?.ready
+      ? "调度尚未就绪"
+      : state.runtime.running
+        ? "正在处理事件"
+        : "后台服务运行中";
+  $("#service-detail").textContent = connected
+    ? `心跳 ${date(state.runtime?.lastTickAt)} · 排队 ${state.runtime?.queued ?? 0}`
+    : `最后连接 ${date(lastConnectedAt)}`;
   const profileFocus = view === "profile" ? window.ProfileUI?.focus() : null;
   let html = "";
   if (view === "profile") {
@@ -223,13 +230,18 @@ async function refresh(force = false) {
     const next = await api("/api/state");
     const json = JSON.stringify(next);
     state = next;
+    connected = true;
+    lastConnectedAt = Date.now();
     if (force || json !== lastData) {
       lastData = json;
       render();
     }
-    $("#service-label").title = "本地服务已连接";
+    $("#service-label").title =
+      `启动 ${date(state.runtime?.startedAt)}；最近成功检查 ${date(state.runtime?.lastCheckAt)}；最近完成 ${date(state.runtime?.lastFinishedAt)}；最近失败 ${date(state.runtime?.lastFailureAt)}`;
   } catch (e) {
-    $("#service-label").textContent = "连接已断开";
+    connected = false;
+    $("#service-label").textContent = "连接中断 · 状态未知";
+    $("#service-detail").textContent = `最后连接 ${date(lastConnectedAt)}`;
     if (force) toast(e.message, true);
   } finally {
     refreshing = false;

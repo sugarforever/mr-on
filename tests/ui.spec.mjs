@@ -169,3 +169,25 @@ test("proactive invitation opens a two-mode profile with editable memory and dur
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("Gateway status becomes unknown on connection loss and recovers", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#service-label")).toHaveText(
+    /后台服务运行中|正在处理事件/,
+  );
+  await expect(page.locator("#service-detail")).toContainText("心跳");
+  await page.route("**/api/state", (route) => route.abort());
+  await expect(page.locator("#service-label")).toHaveText(
+    "连接中断 · 状态未知",
+  );
+  await page.getByRole("button", { name: "监控任务" }).click();
+  await expect(page.locator("#service-label")).toHaveText(
+    "连接中断 · 状态未知",
+  );
+  await page.unroute("**/api/state");
+  await expect(page.locator("#service-label")).toHaveText(
+    /后台服务运行中|正在处理事件/,
+  );
+});

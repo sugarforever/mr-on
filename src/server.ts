@@ -1,5 +1,5 @@
 import express from "express";
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -21,6 +21,48 @@ export function createApp(dir: string, webhookToken: string) {
   const engine = new Engine(store, new PiAgent(store), demoReader(store));
   const profile = new Profile(store, new PiAgent(store));
   profile.tick();
+  const runtime = {
+    instanceId: randomUUID(),
+    startedAt: Date.now(),
+    lastTickAt: null as number | null,
+    stopping: false,
+  };
+  const ready = () =>
+    !runtime.stopping &&
+    runtime.lastTickAt !== null &&
+    Date.now() - runtime.lastTickAt < 5000;
+  const runtimeSnapshot = () => ({
+    ...runtime,
+    ready: ready(),
+    queued: Number(
+      store.db
+        .prepare("SELECT COUNT(*) AS n FROM runs WHERE status='queued'")
+        .get()!.n,
+    ),
+    running: Number(
+      store.db
+        .prepare("SELECT COUNT(*) AS n FROM runs WHERE status='running'")
+        .get()!.n,
+    ),
+    lastFinishedAt:
+      store.db.prepare("SELECT MAX(finishedAt) AS at FROM runs").get()!.at ??
+      null,
+    lastCheckAt:
+      store.db
+        .prepare(
+          "SELECT MAX(finishedAt) AS at FROM runs WHERE kind='check' AND status='done'",
+        )
+        .get()!.at ?? null,
+    lastFailureAt:
+      store.db
+        .prepare(
+          "SELECT MAX(finishedAt) AS at FROM runs WHERE status IN ('failed','interrupted')",
+        )
+        .get()!.at ?? null,
+  });
+  const beginStop = () => {
+    runtime.stopping = true;
+  };
   const clients = new Set<express.Response>();
   const announce = () => {
     for (const client of clients) client.write("event: update\ndata: {}\n\n");
@@ -54,6 +96,20 @@ export function createApp(dir: string, webhookToken: string) {
       return res.status(415).json({ error: "请使用 application/json" });
     next();
   });
+  app.get("/healthz", (_req, res) => res.json({ ok: true }));
+  app.get("/readyz", (_req, res) => {
+    try {
+      store.db.prepare("SELECT 1").get();
+      res.status(ready() ? 200 : 503).json({ ready: ready() });
+    } catch {
+      res.status(503).json({ ready: false });
+    }
+  });
+  app.use((req, res, next) => {
+    if (runtime.stopping && req.method !== "GET")
+      return res.status(503).json({ error: "服务正在停止，请稍后重试" });
+    next();
+  });
   app.use("/api/profile/facts", express.json({ limit: "256kb" }));
   app.use(express.json({ limit: "32kb" }));
   app.use((req, res, next) => {
@@ -61,7 +117,11 @@ export function createApp(dir: string, webhookToken: string) {
     next();
   });
   app.get("/api/state", (_req, res) =>
-    res.json({ ...store.snapshot(), profile: profile.snapshot() }),
+    res.json({
+      ...store.snapshot(),
+      profile: profile.snapshot(),
+      runtime: runtimeSnapshot(),
+    }),
   );
   app.get("/api/stream", (req, res) => {
     if (clients.size >= 16) return res.status(429).end();
@@ -244,10 +304,12 @@ export function createApp(dir: string, webhookToken: string) {
   );
   let lastChanges = 0;
   const tick = () => {
+    if (runtime.stopping) return;
     store.scheduleDue();
     profile.tick();
     void engine.drain();
     void profile.drain();
+    runtime.lastTickAt = Date.now();
     const changes = Number(
       store.db.prepare("SELECT total_changes() AS n").get()!.n,
     );
@@ -260,7 +322,7 @@ export function createApp(dir: string, webhookToken: string) {
     for (const client of clients) client.end();
     clients.clear();
   };
-  return { app, store, engine, profile, tick, closeStreams };
+  return { app, store, engine, profile, tick, closeStreams, beginStop };
 }
 function acquireLock(dir: string): () => void {
   const path = join(dir, "service.lock");
@@ -289,46 +351,99 @@ function acquireLock(dir: string): () => void {
 }
 export function start() {
   const dir = resolve(process.env.MR_ON_DATA || ".data");
+  const port = Number(process.env.PORT || 4317);
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw Error("端口需为 1–65535");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const release = acquireLock(dir);
-  const tokenPath = join(dir, "webhook-token");
-  if (!existsSync(tokenPath))
-    writeFileSync(tokenPath, randomBytes(32).toString("hex"), { mode: 0o600 });
-  const token = readFileSync(tokenPath, "utf8").trim();
-  const { app, store, engine, profile, tick, closeStreams } = createApp(
-    dir,
-    token,
-  );
-  const port = Number(process.env.PORT || 4317);
-  const server = app.listen(port, "127.0.0.1", () =>
+  let service: ReturnType<typeof createApp>;
+  try {
+    const tokenPath = join(dir, "webhook-token");
+    if (!existsSync(tokenPath))
+      writeFileSync(tokenPath, randomBytes(32).toString("hex"), {
+        mode: 0o600,
+      });
+    service = createApp(dir, readFileSync(tokenPath, "utf8").trim());
+  } catch (error) {
+    release();
+    throw error;
+  }
+  const { app, store, engine, profile, tick, closeStreams, beginStop } =
+    service;
+  const log = (event: string, extra: object = {}) =>
     console.log(
-      `mr-on 已启动：http://127.0.0.1:${port}（默认离线演示；数据目录 ${dir}）`,
-    ),
-  );
-  tick();
-  const timer = setInterval(tick, 1000);
-  let stopping = false;
-  const stop = async () => {
+      JSON.stringify({ time: new Date().toISOString(), event, ...extra }),
+    );
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const server = app.listen(port, "127.0.0.1", () => {
+    log("gateway.started", { port, pid: process.pid });
     if (stopping) return;
-    stopping = true;
+    timer = setInterval(safeTick, 1000);
+    safeTick();
+  });
+  let stopping: Promise<void> | undefined;
+  const stop = (): Promise<void> => {
+    if (stopping) return stopping;
+    beginStop();
     clearInterval(timer);
     closeStreams();
-    server.close();
-    await Promise.all([engine.stop(), profile.stop()]);
-    store.close();
-    release();
+    log("gateway.stopping");
+    const deadline = setTimeout(() => {
+      console.error(
+        JSON.stringify({
+          time: new Date().toISOString(),
+          event: "gateway.stop_timeout",
+        }),
+      );
+      // Do not release the lock or close SQLite underneath active work.
+      // Startup recovery marks unfinished runs interrupted.
+      process.exit(1);
+    }, 100000);
+    deadline.unref();
+    const httpClosed = new Promise<void>((done) => server.close(() => done()));
+    stopping = (async () => {
+      await Promise.all([httpClosed, engine.stop(), profile.stop()]);
+      store.close();
+      release();
+      clearTimeout(deadline);
+      process.removeListener("SIGINT", onSignal);
+      process.removeListener("SIGTERM", onSignal);
+      log("gateway.stopped");
+    })();
+    return stopping;
   };
-  process.once("SIGINT", () => void stop());
-  process.once("SIGTERM", () => void stop());
+  function onSignal() {
+    void stop();
+  }
+  function safeTick() {
+    try {
+      tick();
+    } catch {
+      console.error(
+        JSON.stringify({
+          time: new Date().toISOString(),
+          event: "gateway.scheduler_failed",
+        }),
+      );
+      process.exitCode = 1;
+      void stop();
+    }
+  }
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   server.once("error", () => {
-    clearInterval(timer);
-    store.close();
-    release();
-    console.error("启动失败：端口不可用。");
+    console.error(
+      JSON.stringify({
+        time: new Date().toISOString(),
+        event: "gateway.listen_failed",
+      }),
+    );
     process.exitCode = 1;
+    void stop();
   });
   return { server, store, engine, stop };
 }
+
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
