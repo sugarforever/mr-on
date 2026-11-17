@@ -127,6 +127,7 @@ test("proactive invitation opens a two-mode profile with editable memory and dur
     }),
   ).toContainText("请叫我林");
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: "docs/screenshots/profile-chat.png",
     fullPage: true,
