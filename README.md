@@ -20,6 +20,8 @@ npm start
 
 需要关闭终端后仍运行，可先构建，再预览后台安装：`npm run service -- install --dry-run`。确认后执行 `npm run service -- install`，由 macOS launchd 或 Linux systemd 用户服务托管。详见 [Gateway 后台服务](docs/gateway-service.md)。安装不会自动开放公网端口。
 
+Web 和 CLI 可共同访问事项与画像会话；CLI 使用独立、可撤销的凭据，支持读取历史和订阅持久事件。用法及协议见 [共享 Channel 接入](docs/channel.md)。
+
 开发时运行 `npm run dev`。退出时按 Ctrl+C；服务会停止接收请求，等待当前运行结束后释放数据库与进程锁。无需公开部署。
 
 可选环境变量：

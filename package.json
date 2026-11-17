@@ -11,6 +11,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "service": "node dist/src/service.js",
+    "client": "node dist/src/client.js",
     "test": "tsx --test tests/*.test.ts",
     "demo": "tsx src/demo.ts",
     "test:ui": "playwright test",

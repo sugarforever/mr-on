@@ -54,14 +54,20 @@ let view = "overview",
   toastTimer,
   lastConnectedAt = null,
   connected = false;
+const channelClientId =
+  sessionStorage.getItem("channelClientId") || crypto.randomUUID();
+sessionStorage.setItem("channelClientId", channelClientId);
 async function api(path, body, method = "POST") {
   const response = await fetch(
     path,
     body === undefined
-      ? {}
+      ? { headers: { "X-Mr-Client": channelClientId } }
       : {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Mr-Client": channelClientId,
+          },
           body: JSON.stringify(body),
         },
   );
@@ -228,6 +234,16 @@ async function refresh(force = false) {
   refreshing = true;
   try {
     const next = await api("/api/state");
+    const activeItem = selectedItem;
+    if (activeItem && $("#item-dialog").open) {
+      const history = await api(
+        `/api/channel/conversations/research:${activeItem}`,
+      );
+      next.messages = [
+        ...next.messages.filter((m) => m.itemId !== activeItem),
+        ...history.messages.slice().reverse(),
+      ];
+    }
     const json = JSON.stringify(next);
     state = next;
     connected = true;
@@ -295,6 +311,7 @@ function renderItem() {
 }
 async function openItem(id, notification) {
   selectedItem = id;
+  watchConversation(`research:${id}`);
   renderItem();
   if (!$("#item-dialog").open) {
     $("#message-form").reset();
@@ -419,9 +436,13 @@ $("#message-form").addEventListener("submit", (e) => {
   e.preventDefault();
   void submit(e.target, async () => {
     await api(
-      `/api/items/${selectedItem}/messages`,
-      Object.fromEntries(new FormData(e.target)),
+      `/api/channel/conversations/research:${selectedItem}/messages`,
+      pendingChannelMessage(
+        `research:${selectedItem}`,
+        Object.fromEntries(new FormData(e.target)),
+      ),
     );
+    sessionStorage.removeItem(`channelPending:research:${selectedItem}`);
     e.target.reset();
     toast("已发送至当前事项会话");
   });
@@ -437,3 +458,35 @@ $("#followup-form").addEventListener("submit", (e) => {
 });
 void refresh(true);
 setInterval(() => void refresh(), 2000);
+
+// Keep a stable request ID after a lost HTTP acceptance; altered text is a new request.
+function pendingChannelMessage(id, input) {
+  const key = `channelPending:${id}`;
+  let prior;
+  try {
+    prior = JSON.parse(sessionStorage.getItem(key));
+  } catch {}
+  const payload = JSON.stringify(input);
+  if (!prior || prior.payload !== payload)
+    prior = { payload, requestId: crypto.randomUUID() };
+  sessionStorage.setItem(key, JSON.stringify(prior));
+  return { ...input, requestId: prior.requestId };
+}
+let conversationStream;
+function watchConversation(id) {
+  conversationStream?.close();
+  const key = `channelCursor:${id}`;
+  const cursor = sessionStorage.getItem(key);
+  conversationStream = new EventSource(
+    `/api/channel/conversations/${encodeURIComponent(id)}/stream${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+  );
+  const recover = async (event) => {
+    // Refresh replaces committed history by stable IDs, avoiding append duplicates.
+    await refresh(true);
+    if (connected && event.lastEventId)
+      sessionStorage.setItem(key, event.lastEventId);
+  };
+  conversationStream.addEventListener("change", recover);
+  conversationStream.addEventListener("snapshot", recover);
+}
+$("#item-dialog").addEventListener("close", () => conversationStream?.close());

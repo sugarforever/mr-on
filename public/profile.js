@@ -143,7 +143,7 @@ document.addEventListener("submit", async (event) => {
     if (form.id === "profile-chat-form") {
       const dimension = ui.dimension || state.profile.nextDimension;
       ui.requestId ??= crypto.randomUUID();
-      await api("/api/profile/answers", {
+      await api("/api/channel/conversations/profile/messages", {
         requestId: ui.requestId,
         dimension,
         text: form.elements.text.value,
@@ -168,3 +168,17 @@ document.addEventListener("submit", async (event) => {
 });
 const stream = new EventSource("/api/stream");
 stream.addEventListener("update", () => void refresh());
+
+const profileStream = new EventSource(
+  "/api/channel/conversations/profile/stream" +
+    (sessionStorage.getItem("channelCursor:profile")
+      ? "?cursor=" +
+        encodeURIComponent(sessionStorage.getItem("channelCursor:profile"))
+      : ""),
+);
+for (const kind of ["change", "snapshot"])
+  profileStream.addEventListener(kind, async (event) => {
+    await refresh();
+    if (connected && event.lastEventId)
+      sessionStorage.setItem("channelCursor:profile", event.lastEventId);
+  });

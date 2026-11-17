@@ -191,3 +191,51 @@ test("Gateway status becomes unknown on connection loss and recovers", async ({
     /后台服务运行中|正在处理事件/,
   );
 });
+
+test("Channel retry after lost acceptance is deduplicated and committed history reopens", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const state = await (await page.request.get("/api/state")).json();
+  const item = state.items[0];
+  expect(item).toBeTruthy();
+  await page
+    .getByRole("button")
+    .filter({ hasText: "Pi 发布动态 有新变化" })
+    .first()
+    .click();
+  const question = "断线重试后的唯一问题";
+  await page.getByLabel("继续追问这次变化").fill(question);
+  let lost = true;
+  const requests = [];
+  await page.route(
+    "**/api/channel/conversations/**/messages",
+    async (route) => {
+      requests.push(route.request().postDataJSON());
+      const response = await route.fetch();
+      if (lost) {
+        lost = false;
+        await route.abort();
+      } else await route.fulfill({ response });
+    },
+  );
+  await page.getByRole("button", { name: "发送 ↗" }).click();
+  await expect(page.getByRole("status")).toHaveClass("error");
+  await page.getByRole("button", { name: "发送 ↗" }).click();
+  await expect(page.getByLabel("继续追问这次变化")).toHaveValue("");
+  expect(requests.length).toBe(2);
+  expect(requests[0].requestId).toBe(requests[1].requestId);
+  await page.reload();
+  await page
+    .getByRole("button")
+    .filter({ hasText: "Pi 发布动态 有新变化" })
+    .first()
+    .click();
+  await expect(
+    page.locator("#item-content .message.user").filter({ hasText: question }),
+  ).toHaveCount(1);
+  await expect(page.locator("#item-content .message.assistant")).toHaveCount(
+    state.messages.filter((m) => m.itemId === item.id && m.role === "assistant")
+      .length + 1,
+  );
+});

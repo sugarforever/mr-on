@@ -70,15 +70,23 @@ export class Store {
     if (!t) throw Error("事项不存在");
     return t;
   }
+  private txDepth = 0;
   tx<T>(fn: () => T): T {
-    this.db.exec("BEGIN IMMEDIATE");
+    const depth = this.txDepth;
+    const savepoint = `nested_${depth}`;
+    this.db.exec(depth ? `SAVEPOINT ${savepoint}` : "BEGIN IMMEDIATE");
+    this.txDepth++;
     try {
       const r = fn();
-      this.db.exec("COMMIT");
+      this.db.exec(depth ? `RELEASE ${savepoint}` : "COMMIT");
       return r;
     } catch (e) {
-      this.db.exec("ROLLBACK");
+      this.db.exec(
+        depth ? `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}` : "ROLLBACK",
+      );
       throw e;
+    } finally {
+      this.txDepth--;
     }
   }
   createTask(input: Row) {

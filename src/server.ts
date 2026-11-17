@@ -1,4 +1,6 @@
 import express from "express";
+import { Channel, ChannelError } from "./channel.js";
+import { channelRoutes } from "./channel-http.js";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   existsSync,
@@ -20,6 +22,7 @@ export function createApp(dir: string, webhookToken: string) {
   const store = new Store(dir);
   const engine = new Engine(store, new PiAgent(store), demoReader(store));
   const profile = new Profile(store, new PiAgent(store));
+  const channel = new Channel(store, profile);
   profile.tick();
   const runtime = {
     instanceId: randomUUID(),
@@ -116,6 +119,10 @@ export function createApp(dir: string, webhookToken: string) {
     if (req.method !== "GET") res.once("finish", announce);
     next();
   });
+  const access = channelRoutes(app, channel, store, () => {
+    void engine.drain().finally(announce);
+    void profile.drain().finally(announce);
+  });
   app.get("/api/state", (_req, res) =>
     res.json({
       ...store.snapshot(),
@@ -133,9 +140,9 @@ export function createApp(dir: string, webhookToken: string) {
   });
   app.get("/api/profile", (_req, res) => res.json(profile.snapshot()));
   app.post("/api/profile/answers", (req, res) => {
-    const job = profile.answer(req.body);
+    const receipt = access.submit(req, "profile");
     void profile.drain().finally(announce);
-    res.status(202).json({ jobId: job.id });
+    res.status(202).json(receipt);
   });
   app.patch("/api/profile/facts", (req, res) => {
     profile.saveFacts(req.body.facts);
@@ -189,27 +196,11 @@ export function createApp(dir: string, webhookToken: string) {
     res.status(202).json({ runId });
   });
   app.post("/api/items/:id/messages", (req, res) => {
-    const item = store.item(req.params.id);
-    const text = String(req.body.text || "").trim();
-    if (!text || text.length > 8000) throw Error("问题需为 1–8000 字符");
-    const runId = store.tx(() => {
-      const id = store.enqueue(item.taskId, "message", item.id, text);
-      store.db
-        .prepare("INSERT INTO messages VALUES(?,?,?,?,?,?,?,?)")
-        .run(
-          crypto.randomUUID(),
-          item.taskId,
-          item.id,
-          id,
-          item.sessionId,
-          "user",
-          text,
-          Date.now(),
-        );
-      return id;
-    });
-    void engine.drain();
-    res.status(202).json({ runId, itemId: item.id, sessionId: item.sessionId });
+    // Compatibility endpoint: older Web clients receive a generated request ID.
+    req.body.requestId ??= randomUUID();
+    const receipt = access.submit(req, `research:${req.params.id}`);
+    void engine.drain().finally(announce);
+    res.status(202).json(receipt);
   });
   app.post("/api/items/:id/followups", (req, res) =>
     res.status(201).json({
@@ -292,6 +283,8 @@ export function createApp(dir: string, webhookToken: string) {
       res: express.Response,
       _next: express.NextFunction,
     ) => {
+      if (err instanceof ChannelError)
+        return void res.status(err.status).json({ error: err.message });
       const clientError =
         err instanceof Error &&
         /任务|事项|eventId|请输入|请先|请填|请配|周期|模型地址|问题|只能|演示|JSON|无效|too large|Unexpected|必须/.test(
@@ -319,10 +312,20 @@ export function createApp(dir: string, webhookToken: string) {
     }
   };
   const closeStreams = () => {
+    access.close();
     for (const client of clients) client.end();
     clients.clear();
   };
-  return { app, store, engine, profile, tick, closeStreams, beginStop };
+  return {
+    app,
+    store,
+    engine,
+    profile,
+    channel,
+    tick,
+    closeStreams,
+    beginStop,
+  };
 }
 function acquireLock(dir: string): () => void {
   const path = join(dir, "service.lock");
