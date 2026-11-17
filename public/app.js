@@ -24,6 +24,7 @@ const names = {
   inbox: "收件箱",
   runs: "执行记录",
   events: "事件与 Webhook",
+  profile: "关于我",
 };
 const statuses = {
   queued: "等待执行",
@@ -88,7 +89,25 @@ function taskCard(t) {
   );
   return `<article class="task"><div class="task-top"><div class="task-icon">↗</div><div><h3>${escape(t.name)}</h3><div class="task-url" title="${escape(t.url)}">${escape(t.url)}</div></div><span class="badge ${t.paused ? "gray" : ""}">${t.paused ? "已暂停" : running ? "检查中" : "监控中"}</span></div><p class="task-goal">${escape(t.goal)}</p><div class="task-bottom"><span>${t.intervalMinutes < 60 ? `每 ${t.intervalMinutes} 分钟` : t.intervalMinutes === 1440 ? "每天" : `每 ${t.intervalMinutes / 60} 小时`} · ${t.paused ? "计划已暂停" : `下次 ${date(t.nextAt)}`}</span><div class="actions"><button class="button" data-action="edit" data-id="${t.id}">编辑</button><button class="button" data-action="pause" data-id="${t.id}">${t.paused ? "恢复" : "暂停"}</button><button class="button" data-action="run" data-id="${t.id}" ${running ? "disabled" : ""}>${running ? "检查中…" : "立即检查"}</button></div></div></article>`;
 }
+function allNotifications() {
+  return [
+    ...state.notifications,
+    ...(state.profile?.invitations || [])
+      .filter((i) => i.status === "pending")
+      .map((i) => ({ ...i, kind: "profile" })),
+  ].sort((a, b) => b.createdAt - a.createdAt);
+}
+function profileBanner() {
+  const invitation = state.profile?.invitations.find(
+    (i) => i.status === "pending",
+  );
+  return invitation
+    ? `<section class="profile-banner"><div><span class="eyebrow">A CONVERSATION FOR YOU</span><h3>${escape(invitation.title)}</h3><p>${escape(invitation.body)}</p></div><div class="actions"><button class="button primary" data-action="profile-open">开始交流</button><button class="button text" data-action="profile-snooze">明天再说</button></div></section>`
+    : "";
+}
 function notificationCard(n) {
+  if (n.kind === "profile")
+    return `<div class="inbox-entry profile-invitation" role="button" tabindex="0" data-action="profile-open"><div class="entry-top"><b>${n.read ? "" : '<span class="unread-dot"></span>'}${escape(n.title)}</b><span class="badge">等你回应</span></div><p>${escape(n.body)}</p><div class="entry-bottom"><span>${date(n.createdAt)}</span><span>聊一聊或一次性填写 →</span></div></div>`;
   return `<div class="inbox-entry" role="button" tabindex="0" data-action="item" data-id="${n.itemId}" data-notification="${n.id}"><div class="entry-top"><b>${n.read ? "" : '<span class="unread-dot"></span>'}${escape(n.title)}</b><span class="badge ${state.config.mode === "demo" ? "amber" : ""}">${n.body.includes("离线演示") ? "演示" : "新发现"}</span></div><p>${escape(n.body)}</p><div class="entry-bottom"><span>${date(n.createdAt)}</span><span>查看并继续研究 ↗</span></div></div>`;
 }
 function runsTable(runs) {
@@ -113,7 +132,8 @@ function render() {
   $("#page-name").textContent = names[view];
   $(".nav.active")?.classList.remove("active");
   $(`[data-view="${view}"]`)?.classList.add("active");
-  const unread = state.notifications.filter((n) => !n.read).length;
+  const notifications = allNotifications();
+  const unread = notifications.filter((n) => !n.read).length;
   $("#task-count").textContent = state.tasks.length;
   $("#inbox-count").textContent = unread;
   $("#mode-badge").textContent =
@@ -125,8 +145,11 @@ function render() {
   )
     ? "正在处理事件"
     : "服务运行中";
+  const profileFocus = view === "profile" ? window.ProfileUI?.focus() : null;
   let html = "";
-  if (view === "overview") {
+  if (view === "profile") {
+    html = window.ProfileUI?.render(state.profile) || "正在载入…";
+  } else if (view === "overview") {
     html =
       heading("工作概览", "把持续关注交给 mr-on，把时间留给判断。", newButton) +
       `<section class="hero"><div><p class="eyebrow">ALWAYS ON. ALWAYS IN CONTEXT.</p><h2>让重要变化，主动找到你。</h2><p>定期检查公开资料，记住进展，发现变化后与你继续研究。</p><div class="actions"><button class="button" data-action="demo">体验离线演示 ↗</button><button class="button text" data-action="change">模拟一次资料变化 →</button></div></div><div class="orbital" aria-hidden="true"><span class="mark">m<span></span></span></div></section><section class="stats">${[
@@ -152,7 +175,7 @@ function render() {
         )
         .join(
           "",
-        )}</section><div class="columns"><section><div class="section-head"><h2>正在关注</h2><button class="button text" data-view="tasks">全部任务 →</button></div><div class="panel">${state.tasks.length ? state.tasks.slice(0, 3).map(taskCard).join("") : empty("从一份资料开始", "添加项目文档、版本发布页或其他公开资料，告诉 mr-on 你关心什么。", newButton)}</div><div class="subtle-box"><b>有变化时深入，无变化时安静。</b>周期检查独立执行。发现新资料版本后创建研究事项，追问和计划跟进都会回到同一个会话。</div></section><section><div class="section-head"><h2>最新发现 ${unread ? `<span class="badge">${unread} 未读</span>` : ""}</h2><button class="button text" data-view="inbox">收件箱 →</button></div><div class="panel">${state.notifications.length ? state.notifications.slice(0, 3).map(notificationCard).join("") : empty("暂时没有新变化", "首次读取会建立基线。之后发现正文变化，结果会出现在这里。")}</div><div class="subtle-box"><b>${state.config.mode === "demo" ? "当前为离线演示模式" : "模型已连接"}</b>${state.config.mode === "demo" ? "试试「体验离线演示」，再模拟一次资料变化。回复来自固定 fixture，不代表真实模型研究。" : `使用 ${escape(state.config.model)}。模型只可读取当前任务资料，不具备发布或外部发送能力。`}</div></section></div>${schedules()}<section class="mt"><div class="section-head"><h2>最近执行</h2><button class="button text" data-view="runs">完整记录 →</button></div>${runsTable(state.runs.slice(0, 5))}</section>`;
+        )}</section><div class="columns"><section><div class="section-head"><h2>正在关注</h2><button class="button text" data-view="tasks">全部任务 →</button></div><div class="panel">${state.tasks.length ? state.tasks.slice(0, 3).map(taskCard).join("") : empty("从一份资料开始", "添加项目文档、版本发布页或其他公开资料，告诉 mr-on 你关心什么。", newButton)}</div><div class="subtle-box"><b>有变化时深入，无变化时安静。</b>周期检查独立执行。发现新资料版本后创建研究事项，追问和计划跟进都会回到同一个会话。</div></section><section><div class="section-head"><h2>最新发现 ${unread ? `<span class="badge">${unread} 未读</span>` : ""}</h2><button class="button text" data-view="inbox">收件箱 →</button></div><div class="panel">${notifications.length ? notifications.slice(0, 3).map(notificationCard).join("") : empty("暂时没有新变化", "首次读取会建立基线。之后发现正文变化，结果会出现在这里。")}</div><div class="subtle-box"><b>${state.config.mode === "demo" ? "当前为离线演示模式" : "模型已连接"}</b>${state.config.mode === "demo" ? "试试「体验离线演示」，再模拟一次资料变化。回复来自固定 fixture，不代表真实模型研究。" : `使用 ${escape(state.config.model)}。模型只可读取当前任务资料，不具备发布或外部发送能力。`}</div></section></div>${schedules()}<section class="mt"><div class="section-head"><h2>最近执行</h2><button class="button text" data-view="runs">完整记录 →</button></div>${runsTable(state.runs.slice(0, 5))}</section>`;
   } else if (view === "tasks")
     html =
       heading(
@@ -164,7 +187,7 @@ function render() {
   else if (view === "inbox")
     html =
       heading("收件箱", `${unread} 条未读通知 · 所有通知仅保存在应用内`) +
-      `<div class="panel">${state.notifications.length ? state.notifications.map(notificationCard).join("") : empty("一切安静", "新变化和计划跟进的结果会出现在这里。")}</div>`;
+      `<div class="panel">${notifications.length ? notifications.map(notificationCard).join("") : empty("一切安静", "新变化和计划跟进的结果会出现在这里。")}</div>`;
   else if (view === "runs")
     html =
       heading(
@@ -180,7 +203,13 @@ function render() {
         "从外部事件唤醒任务，同一事件 ID 只接收一次。",
       ) +
       `<section class="panel event-setup"><h3>本地调用示例</h3><p class="section-copy">Basic 认证用户名为 events。令牌从本机数据目录读取；不会回传浏览器。将 taskId 替换为目标任务 ID。事件内容仅记录，不作为指令执行。</p><pre class="code-block" id="webhook-example"></pre><button class="button" data-action="copy">复制调用示例</button><p class="inline-copy">默认数据目录为 .data；使用 MR_ON_DATA 时调整令牌文件路径。该入口仅监听本机，外部系统需通过你自己配置的受认证代理接入。</p></section><section class="mt"><div class="section-head"><h2>持久事件收件记录</h2><small>eventId 全局去重</small></div>${state.events.length ? `<div class="panel table-wrap"><table><thead><tr><th>事件 ID</th><th>关联任务</th><th>状态</th><th>接收时间</th></tr></thead><tbody>${state.events.map((e) => `<tr><td>${escape(e.id)}</td><td>${escape(taskName(e.taskId))}</td><td>${tag(e.status)}</td><td>${date(e.createdAt)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="panel">${empty("等待第一个事件", "发送上面的请求即可触发一次资料检查。")}</div>`}</section>`;
+  if (view === "overview")
+    html = html.replace(
+      '<section class="hero">',
+      profileBanner() + '<section class="hero">',
+    );
   $("#main").innerHTML = html;
+  if (view === "profile") window.ProfileUI?.restore(profileFocus);
   if (view === "events") $("#webhook-example").textContent = webhookExample();
   if (selectedItem && $("#item-dialog").open) renderItem();
 }
@@ -282,7 +311,7 @@ document.addEventListener("click", async (event) => {
   }
   const action = button.dataset.action,
     id = button.dataset.id;
-  if (!action) return;
+  if (!action || action.startsWith("profile-")) return;
   try {
     if (action === "new") openTask();
     else if (action === "edit") openTask(id);

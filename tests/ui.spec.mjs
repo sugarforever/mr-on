@@ -103,3 +103,65 @@ test("mobile overview has no horizontal overflow", async ({ page }) => {
     fullPage: true,
   });
 });
+test("proactive invitation opens a two-mode profile with editable memory and durable chat", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.getByRole("button", { name: "开始交流", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "关于我", exact: true }),
+  ).toBeVisible();
+  const answer = page.getByLabel("你的回答 · 称呼与背景");
+  await answer.fill("请叫我林，我在做开源工具。");
+  await page.getByRole("button", { name: "刷新数据" }).click();
+  await expect(answer).toHaveValue("请叫我林，我在做开源工具。");
+  await page.getByRole("button", { name: "发送回答", exact: true }).click();
+  await expect(page.locator(".profile-transcript")).toContainText(
+    "谢谢你愿意告诉我这些",
+  );
+  await expect(
+    page.locator(".profile-fact").filter({
+      has: page.getByRole("heading", { name: "称呼与背景", exact: true }),
+    }),
+  ).toContainText("请叫我林");
+  await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
+  await page.screenshot({
+    path: "docs/screenshots/profile-chat.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "暂时跳过", exact: true }).click();
+  await expect(page.getByLabel("你的回答 · 长期兴趣")).toBeVisible();
+  await page.getByRole("tab", { name: "一次性填写" }).click();
+  await page
+    .getByLabel("交流偏好", { exact: false })
+    .fill("中文、直接、先结论再给理由。");
+  await page.getByRole("button", { name: "保存我的回答" }).click();
+  await expect(page.getByRole("status")).toContainText("共同背景已更新");
+  await page.getByRole("button", { name: "关闭主动邀请", exact: true }).click();
+  await expect(
+    page
+      .locator(".profile-controls")
+      .getByText("主动邀请已关闭", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "关于我", exact: true }).click();
+  await expect(page.locator(".profile-facts")).toContainText(
+    "中文、直接、先结论再给理由。",
+  );
+  await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
+  await page.screenshot({
+    path: "docs/screenshots/profile.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "删除全部画像与交流记录" }).click();
+  await page.getByRole("button", { name: "确认删除", exact: true }).click();
+  await expect(page.locator(".profile-facts")).not.toContainText("请叫我林");
+  await expect(
+    page
+      .locator(".profile-controls")
+      .getByText("主动邀请已关闭", { exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

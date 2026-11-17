@@ -15,9 +15,16 @@ import { Store } from "./store.js";
 import { Engine } from "./engine.js";
 import { PiAgent } from "./agent.js";
 import { demoReader, DEMO_URL } from "./demo-data.js";
+import { Profile } from "./profile.js";
 export function createApp(dir: string, webhookToken: string) {
   const store = new Store(dir);
   const engine = new Engine(store, new PiAgent(store), demoReader(store));
+  const profile = new Profile(store, new PiAgent(store));
+  profile.tick();
+  const clients = new Set<express.Response>();
+  const announce = () => {
+    for (const client of clients) client.write("event: update\ndata: {}\n\n");
+  };
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -47,8 +54,60 @@ export function createApp(dir: string, webhookToken: string) {
       return res.status(415).json({ error: "请使用 application/json" });
     next();
   });
+  app.use("/api/profile/facts", express.json({ limit: "256kb" }));
   app.use(express.json({ limit: "32kb" }));
-  app.get("/api/state", (_req, res) => res.json(store.snapshot()));
+  app.use((req, res, next) => {
+    if (req.method !== "GET") res.once("finish", announce);
+    next();
+  });
+  app.get("/api/state", (_req, res) =>
+    res.json({ ...store.snapshot(), profile: profile.snapshot() }),
+  );
+  app.get("/api/stream", (req, res) => {
+    if (clients.size >= 16) return res.status(429).end();
+    res.set({ "Content-Type": "text/event-stream", Connection: "keep-alive" });
+    res.flushHeaders();
+    clients.add(res);
+    res.write("event: ready\ndata: {}\n\n");
+    req.once("close", () => clients.delete(res));
+  });
+  app.get("/api/profile", (_req, res) => res.json(profile.snapshot()));
+  app.post("/api/profile/answers", (req, res) => {
+    const job = profile.answer(req.body);
+    void profile.drain().finally(announce);
+    res.status(202).json({ jobId: job.id });
+  });
+  app.patch("/api/profile/facts", (req, res) => {
+    profile.saveFacts(req.body.facts);
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/skip", (req, res) => {
+    profile.skip(String(req.body.dimension));
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/preferences", (req, res) => {
+    if (typeof req.body.enabled !== "boolean")
+      throw Error("请填写有效的主动交流设置");
+    profile.preferences(req.body.enabled);
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/snooze", (_req, res) => {
+    profile.snooze();
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/read", (_req, res) => {
+    profile.markRead();
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/forget", (_req, res) => {
+    profile.forget();
+    res.json({ ok: true });
+  });
+  app.post("/api/profile/jobs/:id/retry", (req, res) => {
+    const jobId = profile.retry(req.params.id);
+    void profile.drain().finally(announce);
+    res.status(202).json({ jobId });
+  });
   app.post("/api/config", (req, res) => {
     store.saveConfig(req.body);
     res.json({ ok: true });
@@ -183,7 +242,25 @@ export function createApp(dir: string, webhookToken: string) {
       });
     },
   );
-  return { app, store, engine };
+  let lastChanges = 0;
+  const tick = () => {
+    store.scheduleDue();
+    profile.tick();
+    void engine.drain();
+    void profile.drain();
+    const changes = Number(
+      store.db.prepare("SELECT total_changes() AS n").get()!.n,
+    );
+    if (changes !== lastChanges) {
+      announce();
+      lastChanges = changes;
+    }
+  };
+  const closeStreams = () => {
+    for (const client of clients) client.end();
+    clients.clear();
+  };
+  return { app, store, engine, profile, tick, closeStreams };
 }
 function acquireLock(dir: string): () => void {
   const path = join(dir, "service.lock");
@@ -218,17 +295,16 @@ export function start() {
   if (!existsSync(tokenPath))
     writeFileSync(tokenPath, randomBytes(32).toString("hex"), { mode: 0o600 });
   const token = readFileSync(tokenPath, "utf8").trim();
-  const { app, store, engine } = createApp(dir, token);
+  const { app, store, engine, profile, tick, closeStreams } = createApp(
+    dir,
+    token,
+  );
   const port = Number(process.env.PORT || 4317);
   const server = app.listen(port, "127.0.0.1", () =>
     console.log(
       `mr-on 已启动：http://127.0.0.1:${port}（默认离线演示；数据目录 ${dir}）`,
     ),
   );
-  const tick = () => {
-    store.scheduleDue();
-    void engine.drain();
-  };
   tick();
   const timer = setInterval(tick, 1000);
   let stopping = false;
@@ -236,8 +312,9 @@ export function start() {
     if (stopping) return;
     stopping = true;
     clearInterval(timer);
+    closeStreams();
     server.close();
-    await engine.stop();
+    await Promise.all([engine.stop(), profile.stop()]);
     store.close();
     release();
   };

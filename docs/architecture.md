@@ -45,7 +45,7 @@ flowchart LR
 
 ## 受控 SDK 运行环境
 
-使用项目数据目录下的空 workspace、隔离 agentDir、内存 CredentialStore 和内存 SettingsManager。自定义 ResourceLoader 返回空的扩展、技能、提示模板、项目指令与主题，只提供固定系统提示。工具 allowlist 只有 `read_task_url`，参数为空，实际 URL 由服务端任务提供；不使用 CLI 默认资源发现，不默认加载 MCP。
+使用项目数据目录下的空 workspace、隔离 agentDir、内存 CredentialStore 和内存 SettingsManager。自定义 ResourceLoader 返回空的扩展、提示模板、项目指令与主题，研究模式不加载技能；画像模式仅加载产品内 understand-user skill。研究工具 allowlist 只有 `read_task_url`，参数为空，实际 URL 由服务端任务提供；不使用 CLI 默认资源发现，不默认加载 MCP。
 
 离线 provider 仍通过 `ModelRuntime.registerProvider()` 和 `createAgentSession()` 执行，产生真实 Pi 会话文件。它只返回固定 fixture，所以能证明 SDK 集成与持久路由，不能证明真实 provider 网络请求和研究质量。单独的公开 URL 读取已做网络 smoke check，自动测试默认保持离线。
 
@@ -60,3 +60,5 @@ flowchart LR
 ## 原型限制
 
 无多用户、分布式租约、精确工具重放、外部通知和审批执行器；不支持浏览器渲染、登录网页或 PDF。不对正文变化做语义相关性过滤。当前为本机单进程、只读任务验证产品价值，而不是提供生产级工作流保证。
+
+主动了解用户的后续扩展见 [设计与实现](user-understanding.md)。画像回复使用独立的单任务队列，不与研究事项混用会话。

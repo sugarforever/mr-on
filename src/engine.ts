@@ -3,6 +3,7 @@ import { Store, type Row } from "./store.js";
 import { readPublicUrl } from "./reader.js";
 export interface ReplyInput {
   prompt: string;
+  purpose?: "profile";
   sessionId?: string;
   sessionPath?: string;
   url: string;

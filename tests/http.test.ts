@@ -164,3 +164,91 @@ test("retrying the same failed run is idempotently rejected after its first repl
     rmSync(dir, { recursive: true, force: true });
   }
 });
+test("profile API pushes state changes over SSE and supports complete client round trip", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mr-profile-http-"));
+  const { app, store, engine, profile, closeStreams } = createApp(dir, "token");
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as any).port}`;
+  const controller = new AbortController();
+  const call = (path: string, body: unknown = {}, method = "POST") =>
+    fetch(base + path, {
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  try {
+    const response = await fetch(base + "/api/stream", {
+      signal: controller.signal,
+    });
+    const reader = response.body!.getReader();
+    assert.match(
+      new TextDecoder().decode((await reader.read()).value),
+      /event: ready/,
+    );
+    const initial = (await (await fetch(base + "/api/profile")).json()) as any;
+    assert.equal(initial.invitations.length, 1);
+    const pending = reader.read();
+    const sent = await call("/api/profile/answers", {
+      requestId: "profile-http",
+      dimension: "goals",
+      text: "完成产品验证",
+    });
+    assert.equal(sent.status, 202);
+    assert.match(
+      new TextDecoder().decode((await pending).value),
+      /event: update/,
+    );
+    await profile.drain();
+    const state = (await (await fetch(base + "/api/state")).json()) as any;
+    assert.ok(state.profile.sessionId);
+    assert.equal(state.profile.facts.goals.value, "完成产品验证");
+    assert.equal(state.profile.invitations[0].status, "answered");
+    assert.equal(
+      (
+        await call(
+          "/api/profile/facts",
+          { facts: { goals: "新目标" } },
+          "PATCH",
+        )
+      ).status,
+      200,
+    );
+    assert.equal(profile.snapshot().sessionId, null);
+    assert.equal((await call("/api/profile/forget")).status, 200);
+    assert.equal(profile.snapshot().enabled, false);
+    controller.abort();
+    await reader.cancel().catch(() => {});
+  } finally {
+    controller.abort();
+    closeStreams();
+    await Promise.all([engine.stop(), profile.stop()]);
+    await new Promise<void>((r) => server.close(() => r()));
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test("valid multi-field Chinese profile fits the bounded batch endpoint", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "mr-profile-body-"));
+  const { app, store, engine, profile } = createApp(dir, "token");
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as any).port}`;
+  try {
+    const facts = Object.fromEntries(
+      profile.questions.map((q) => [q.id, "字".repeat(4000)]),
+    );
+    const response = await fetch(base + "/api/profile/facts", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ facts }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(profile.snapshot().facts.background.value.length, 4000);
+  } finally {
+    await Promise.all([engine.stop(), profile.stop()]);
+    await new Promise<void>((r) => server.close(() => r()));
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -7,6 +7,7 @@
     <title>mr-on · 持续关注，及时看见</title>
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
+    <script src="/profile.js" defer></script>
   </head>
   <body>
     <aside class="sidebar">
@@ -28,6 +29,9 @@
         ><button class="nav" data-view="inbox">
           <span>▣</span>收件箱 <i id="inbox-count">0</i></button
         ><button class="nav" data-view="runs"><span>◷</span>执行记录</button>
+        <button class="nav" data-view="profile">
+          <span aria-hidden="true">◎</span>关于我
+        </button>
       </nav>
       <p class="nav-label">管理</p>
       <nav>
@@ -52,7 +56,9 @@
           <span id="mode-badge" class="badge amber">离线演示</span
           ><button class="icon-btn" data-action="refresh" aria-label="刷新数据">
             ↻</button
-          ><span class="avatar">我</span>
+          ><button class="avatar" data-view="profile" aria-label="打开我的画像">
+            我
+          </button>
         </div>
       </header>
       <main id="main" aria-live="polite"><p>正在连接本地服务…</p></main>
@@ -196,6 +202,22 @@
       <p class="form-note">
         追问和跟进复用当前事项会话。暂停任务会同时暂停待执行的计划跟进。
       </p>
+    </dialog>
+    <dialog id="forget-profile-dialog">
+      <div class="dialog-head">
+        <h2>删除画像与交流记录？</h2>
+        <button class="icon-btn" data-close aria-label="关闭">×</button>
+      </div>
+      <p class="section-copy">
+        这会删除你保存的画像、画像对话和专属 Pi
+        会话，并关闭主动邀请。监控任务与研究结果会保留。
+      </p>
+      <div class="dialog-actions">
+        <button class="button" data-close>取消</button
+        ><button class="button primary" data-action="profile-forget-confirm">
+          确认删除
+        </button>
+      </div>
     </dialog>
     <div id="toast" role="status" hidden></div>
   </body>
