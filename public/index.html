@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#143f3a" />
+    <title>mr-on · 持续关注，及时看见</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+    <script src="/profile.js" defer></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/"
+        ><span class="mark">m<span></span></span
+        ><b>mr-on<small>你的持续研究助手</small></b></a
+      >
+      <div class="workspace">
+        <span class="avatar">我</span>
+        <div>个人工作台<small>本机 · 单用户</small></div>
+        <span class="online"></span>
+      </div>
+      <p class="nav-label">工作空间</p>
+      <nav>
+        <button class="nav active" data-view="overview">
+          <span>◫</span>工作概览</button
+        ><button class="nav" data-view="tasks">
+          <span>▤</span>监控任务 <i id="task-count">0</i></button
+        ><button class="nav" data-view="inbox">
+          <span>▣</span>收件箱 <i id="inbox-count">0</i></button
+        ><button class="nav" data-view="runs"><span>◷</span>执行记录</button>
+        <button class="nav" data-view="profile">
+          <span aria-hidden="true">◎</span>关于我
+        </button>
+      </nav>
+      <p class="nav-label">管理</p>
+      <nav>
+        <button class="nav" data-view="events">
+          <span>⇄</span>事件与 Webhook</button
+        ><button class="nav" data-action="settings">
+          <span>⚙</span>模型设置
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="online"></span><b id="service-label">服务运行中</b
+        ><small>事件唤醒 · 持久会话 · 本地存储</small
+        ><span class="version">PROTOTYPE / 0.1</span>
+      </div>
+    </aside>
+    <div class="shell">
+      <header>
+        <div class="breadcrumb">
+          工作空间 <span>/</span> <b id="page-name">工作概览</b>
+        </div>
+        <div class="header-right">
+          <span id="mode-badge" class="badge amber">离线演示</span
+          ><button class="icon-btn" data-action="refresh" aria-label="刷新数据">
+            ↻</button
+          ><button class="avatar" data-view="profile" aria-label="打开我的画像">
+            我
+          </button>
+        </div>
+      </header>
+      <main id="main" aria-live="polite"><p>正在连接本地服务…</p></main>
+      <footer>
+        <span>mr-on — 为值得关注的事，保持在线。</span
+        ><span>资料只读 · 通知仅保存在应用内</span>
+      </footer>
+    </div>
+    <dialog id="task-dialog">
+      <form id="task-form">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">MONITOR</p>
+            <h2 id="task-dialog-title">创建监控任务</h2>
+          </div>
+          <button type="button" class="icon-btn" data-close aria-label="关闭">
+            ×
+          </button>
+        </div>
+        <input type="hidden" name="id" /><label
+          >任务名称<input
+            name="name"
+            required
+            maxlength="100"
+            placeholder="例如：Pi SDK 发布动态" /></label
+        ><label
+          >公开资料 URL<input
+            name="url"
+            type="url"
+            required
+            placeholder="https://example.com/releases" /></label
+        ><label
+          >研究目标<textarea
+            name="goal"
+            rows="3"
+            required
+            maxlength="2000"
+            placeholder="你关心什么变化？这些变化会影响什么决策？"
+          ></textarea></label
+        ><label
+          >检查周期<select name="intervalMinutes">
+            <option value="1">每分钟（测试用）</option>
+            <option value="15">每 15 分钟</option>
+            <option value="60" selected>每小时</option>
+            <option value="360">每 6 小时</option>
+            <option value="1440">每天</option>
+            <option value="10080">每周</option>
+          </select></label
+        >
+        <p class="form-note">
+          首次读取建立基线；之后正文有新变化时通知。支持公开文本与 HTML，最多
+          500 KB / 60,000 字符。
+        </p>
+        <div class="dialog-actions">
+          <button type="button" class="button" data-close>取消</button
+          ><button class="button primary" type="submit">保存任务</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="settings-dialog">
+      <form id="settings-form">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">MODEL CONNECTION</p>
+            <h2>模型设置</h2>
+          </div>
+          <button type="button" class="icon-btn" data-close aria-label="关闭">
+            ×
+          </button>
+        </div>
+        <label
+          >运行模式<select name="mode">
+            <option value="demo">离线演示 · 固定回复，无需凭据</option>
+            <option value="live">真实模型 · OpenAI 兼容服务</option>
+          </select></label
+        ><label
+          >模型服务地址<input
+            name="baseUrl"
+            type="url"
+            required
+            placeholder="https://api.openai.com/v1" /></label
+        ><label
+          >模型 ID<input
+            name="model"
+            required
+            placeholder="gpt-4o-mini" /></label
+        ><label
+          >API Key<input
+            name="apiKey"
+            type="password"
+            autocomplete="new-password"
+            placeholder="留空保留已有凭据"
+        /></label>
+        <p class="form-note">
+          凭据只在服务端保存，不回传浏览器。真实模型费用由你的服务商收取。离线演示通过真实
+          Pi 会话运行固定 fixture，不能验证真实模型质量。
+        </p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close>取消</button
+          ><button class="button primary">保存设置</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="item-dialog" class="wide">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">RESEARCH THREAD</p>
+          <h2 id="item-title">变化详情</h2>
+        </div>
+        <button class="icon-btn" data-close aria-label="关闭">×</button>
+      </div>
+      <div id="item-meta"></div>
+      <div id="item-content"></div>
+      <details class="routing">
+        <summary>会话与路由信息</summary>
+        <div id="item-routing"></div>
+      </details>
+      <form id="message-form">
+        <label for="question">继续追问这次变化</label>
+        <div class="compose">
+          <input
+            id="question"
+            name="text"
+            required
+            maxlength="8000"
+            placeholder="例如：这对我们的升级计划有什么影响？"
+          /><button class="button primary">发送 ↗</button>
+        </div>
+      </form>
+      <form id="followup-form" class="followup">
+        <label
+          >安排后续分析<input
+            name="text"
+            required
+            maxlength="8000"
+            placeholder="届时需要继续研究的问题" /></label
+        ><label
+          >执行时间<input name="dueAt" type="datetime-local" required /></label
+        ><button class="button">安排跟进</button>
+      </form>
+      <p class="form-note">
+        追问和跟进复用当前事项会话。暂停任务会同时暂停待执行的计划跟进。
+      </p>
+    </dialog>
+    <dialog id="forget-profile-dialog">
+      <div class="dialog-head">
+        <h2>删除画像与交流记录？</h2>
+        <button class="icon-btn" data-close aria-label="关闭">×</button>
+      </div>
+      <p class="section-copy">
+        这会删除你保存的画像、画像对话和专属 Pi
+        会话，并关闭主动邀请。监控任务与研究结果会保留。
+      </p>
+      <div class="dialog-actions">
+        <button class="button" data-close>取消</button
+        ><button class="button primary" data-action="profile-forget-confirm">
+          确认删除
+        </button>
+      </div>
+    </dialog>
+    <div id="toast" role="status" hidden></div>
+  </body>
+</html>
