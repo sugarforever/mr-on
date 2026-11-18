@@ -68,7 +68,7 @@ test("conversational answers use one native Pi session, persist explicit facts a
     const before = x.profile.snapshot();
     assert.ok(before.sessionId);
     assert.equal(before.facts.background.value, "叫我小木头，我在做开源产品。");
-    assert.match(before.messages.at(-1)!.body, /离线演示/);
+    assert.match(before.messages.at(-1)!.body, /Offline demo/);
     x.profile.answer({
       requestId: "two",
       dimension: "goals",

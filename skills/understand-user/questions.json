@@ -1,50 +1,50 @@
 [
   {
     "id": "background",
-    "label": "称呼与背景",
-    "question": "我该怎么称呼你？你现在主要在做什么？",
-    "hint": "昵称、角色、经验背景；不需要真实姓名或单位。"
+    "label": "Name and background",
+    "question": "What should I call you, and what are you working on?",
+    "hint": "A nickname, role, or experience is enough. No real name or employer needed."
   },
   {
     "id": "goals",
-    "label": "近期目标",
-    "question": "接下来一到三个月，你最想推进哪件事？",
-    "hint": "当前项目、阶段、遇到的阻力，以及怎样算有进展。"
+    "label": "Current goals",
+    "question": "What would you most like to move forward in the next one to three months?",
+    "hint": "Your project, stage, obstacles, and what progress would look like."
   },
   {
     "id": "interests",
-    "label": "长期兴趣",
-    "question": "哪些话题是你愿意长期关注的？",
-    "hint": "领域、学习方向、想持续跟踪的资料。"
+    "label": "Long-term interests",
+    "question": "What topics would you like to follow over time?",
+    "hint": "Fields, learning goals, or sources you want to keep following."
   },
   {
     "id": "working",
-    "label": "工作与决策方式",
-    "question": "面对新问题时，你喜欢怎么探索和做决定？",
-    "hint": "先动手还是先研究；喜欢哪些依据；需要我怎样提出不同意见。"
+    "label": "Working and decision-making style",
+    "question": "How do you like to explore new problems and make decisions?",
+    "hint": "Experiment or research first? What evidence helps, and how should I raise disagreements?"
   },
   {
     "id": "communication",
-    "label": "交流偏好",
-    "question": "怎样的回答让你觉得舒服又有用？",
-    "hint": "语言、长短、语气、例子、细节和直接程度。"
+    "label": "Communication preferences",
+    "question": "What makes a reply comfortable and useful for you?",
+    "hint": "Language, length, tone, examples, detail, and directness."
   },
   {
     "id": "rhythm",
-    "label": "日常节奏",
-    "question": "你通常什么时候有空交流？什么时候希望保持安静？",
-    "hint": "时区、可交流时段、提醒节奏；这些先作为偏好记录，不自动更改系统日程。"
+    "label": "Daily rhythm",
+    "question": "When are you usually available to chat, and when would you prefer quiet?",
+    "hint": "Time zone, availability, and reminder frequency. These are preferences and do not automatically change schedules."
   },
   {
     "id": "boundaries",
-    "label": "授权与隐私边界",
-    "question": "哪些事情我可以主动做，哪些必须先问你？有哪些不想聊的话题？",
-    "hint": "可自主的只读工作、需要确认的动作、希望保留的私人空间。"
+    "label": "Permissions and privacy",
+    "question": "What can I do proactively, what should I ask about first, and what topics would you rather avoid?",
+    "hint": "Independent read-only work, actions requiring confirmation, and personal boundaries."
   },
   {
     "id": "support",
-    "label": "期待的帮助",
-    "question": "你最希望我帮你减轻什么负担？怎样才算帮上了忙？",
-    "hint": "研究、提醒、整理或讨论；你期待看到的具体结果。"
+    "label": "Desired support",
+    "question": "What burden would you most like help with, and what would useful support look like?",
+    "hint": "Research, reminders, organization, or discussion, and the concrete results you want."
   }
 ]

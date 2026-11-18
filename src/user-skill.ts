@@ -17,7 +17,7 @@ export function loadUnderstandingSkill() {
     : fileURLToPath(new URL("../../skills/understand-user/", import.meta.url));
   const loaded = loadSkillsFromDir({ dir, source: "mr-on-bundled" });
   if (loaded.diagnostics.length || loaded.skills.length !== 1)
-    throw Error("用户了解技能加载失败");
+    throw Error("Failed to load the user-understanding skill");
   const text = readFileSync(join(dir, "SKILL.md"), "utf8");
   const questions = JSON.parse(
     readFileSync(join(dir, "questions.json"), "utf8"),
