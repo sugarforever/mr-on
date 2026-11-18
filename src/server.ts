@@ -363,9 +363,9 @@ function acquireLock(dir: string): () => void {
     } catch {}
   };
 }
-export function start() {
-  const dir = resolve(process.env.MR_ON_DATA || ".data");
-  const port = Number(process.env.PORT || 4317);
+export function start(options: { data?: string; port?: number } = {}) {
+  const dir = resolve(options.data || process.env.MR_ON_DATA || ".data");
+  const port = options.port ?? Number(process.env.PORT || 4317);
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw Error("Port must be between 1 and 65535");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
