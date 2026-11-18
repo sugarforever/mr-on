@@ -1,3 +1,4 @@
+import { validateModelSettings } from "./model-settings.js";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -220,16 +221,10 @@ export class Store {
         };
   }
   saveConfig(c: Row) {
-    const old = this.config();
-    const mode = c.mode === "live" ? "live" : "demo";
-    const baseUrl = String(c.baseUrl || old.baseUrl);
-    const u = new URL(baseUrl);
-    if (u.protocol !== "https:" || u.username || u.password)
-      throw Error("Model endpoint must be an HTTPS URL without credentials");
-    const model = String(c.model || old.model).slice(0, 200);
-    const apiKey =
-      c.apiKey === undefined || c.apiKey === "" ? old.apiKey : String(c.apiKey);
-    if (mode === "live" && !apiKey) throw Error("Please configure an API key");
+    const { mode, baseUrl, model, apiKey } = validateModelSettings(
+      c,
+      this.config(),
+    );
     this.db
       .prepare(
         "INSERT INTO settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",

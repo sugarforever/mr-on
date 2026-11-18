@@ -1,3 +1,5 @@
+import { acquireLock } from "./data-lock.js";
+import { testModelConnection } from "./model-settings.js";
 import express from "express";
 import {
   startTelegram,
@@ -12,9 +14,6 @@ import {
   mkdirSync,
   readFileSync,
   writeFileSync,
-  openSync,
-  closeSync,
-  unlinkSync,
 } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -125,6 +124,33 @@ export function createApp(dir: string, webhookToken: string) {
   app.use((req, res, next) => {
     if (req.method !== "GET") res.once("finish", announce);
     next();
+  });
+  app.use("/api/local-config", (req, res, next) => {
+    const expected = Buffer.from("Bearer " + webhookToken);
+    const actual = Buffer.from(req.headers.authorization || "");
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
+      return res.status(401).json({ error: "Authentication required" });
+    next();
+  });
+  app.get("/api/local-config", (_req, res) =>
+    res.json(store.snapshot().config),
+  );
+  app.post("/api/local-config/test", async (req, res, next) => {
+    try {
+      const { validateModelSettings } = await import("./model-settings.js");
+      await testModelConnection(
+        validateModelSettings(req.body, store.config()),
+      );
+      res.json({ ok: true });
+    } catch {
+      res
+        .status(400)
+        .json({ error: "Connection test failed; settings unchanged" });
+    }
+  });
+  app.post("/api/local-config", (req, res) => {
+    store.saveConfig(req.body);
+    res.json({ ok: true });
   });
   const access = channelRoutes(app, channel, store, () => {
     void engine.drain().finally(announce);
@@ -337,32 +363,6 @@ export function createApp(dir: string, webhookToken: string) {
     beginStop,
   };
 }
-function acquireLock(dir: string): () => void {
-  const path = join(dir, "service.lock");
-  try {
-    const fd = openSync(path, "wx", 0o600);
-    writeFileSync(fd, String(process.pid));
-    closeSync(fd);
-  } catch (e: any) {
-    if (e.code !== "EEXIST") throw e;
-    const pid = Number(readFileSync(path, "utf8"));
-    let alive = true;
-    try {
-      process.kill(pid, 0);
-    } catch {
-      alive = false;
-    }
-    if (alive)
-      throw Error("A service is already running with this data directory");
-    unlinkSync(path);
-    return acquireLock(dir);
-  }
-  return () => {
-    try {
-      unlinkSync(path);
-    } catch {}
-  };
-}
 export function start(options: { data?: string; port?: number } = {}) {
   const dir = resolve(options.data || process.env.MR_ON_DATA || ".data");
   const port = options.port ?? Number(process.env.PORT || 4317);
@@ -417,6 +417,13 @@ export function start(options: { data?: string; port?: number } = {}) {
     : Promise.resolve(undefined);
   let timer: ReturnType<typeof setInterval> | undefined;
   const server = app.listen(port, "127.0.0.1", () => {
+    writeFileSync(
+      join(dir, "gateway.json"),
+      JSON.stringify({
+        origin: `http://127.0.0.1:${(server.address() as import("node:net").AddressInfo).port}`,
+      }),
+      { mode: 0o600 },
+    );
     log("gateway.started", { port, pid: process.pid });
     if (stopping) return;
     timer = setInterval(safeTick, 1000);
