@@ -7,10 +7,11 @@ import { resolveDataDir } from "./paths.js";
 type Command = "start" | "service" | "client" | "onboard" | "configure";
 export type CliHandler = (args: string[], data: string) => unknown;
 export type CliHandlers = Partial<Record<Command, CliHandler>>;
-const help = `用法：mr-on [start|service|client] [参数] [--data PATH]
+const help = `用法：mr-on [start|service|client|onboard|configure] [参数] [--data PATH]
   mr-on / mr-on start   前台运行（默认端口 4317，仅本机）
   service              install|uninstall|start|stop|restart|status|logs
   client               list|history|send|watch|credentials
+  onboard / configure  引导安装或仅修改模型设置
   --data PATH          数据目录（优先于 MR_ON_DATA，默认 ~/.mr-on）
   --help / --version   显示帮助或版本，不启动服务
 `;
@@ -56,7 +57,8 @@ export async function runCli(args: string[], handlers: CliHandlers = {}) {
   }
   if (command === "client")
     return (await import("./client.js")).main(rest, data);
-  throw Error("此版本尚未包含引导配置；请使用本地网页的模型设置");
+  if (rest.length) throw Error("引导配置不支持此参数");
+  return (await import("./onboarding.js")).runOnboarding(command, data);
 }
 
 if (

@@ -131,9 +131,7 @@ export async function runOnboarding(
       try {
         if (dependencies.install) await dependencies.install();
         else {
-          const service = (await import("./service.js")) as unknown as {
-            main: (args: string[]) => Promise<void>;
-          };
+          const service = await import("./service.js");
           await service.main(["install", "--data", dir]);
         }
       } catch {
