@@ -1,4 +1,9 @@
 import express from "express";
+import {
+  startTelegram,
+  telegramConfigFile,
+  privateFile,
+} from "./telegram-runtime.js";
 import { Channel, ChannelError } from "./channel.js";
 import { channelRoutes } from "./channel-http.js";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
@@ -383,6 +388,33 @@ export function start() {
     console.log(
       JSON.stringify({ time: new Date().toISOString(), event, ...extra }),
     );
+  const telegramPath =
+    process.env.MR_ON_TELEGRAM_CONFIG || join(dir, "telegram.json");
+  // File absence means no adapter, no token reads and no outbound Telegram calls.
+  const telegram = existsSync(telegramPath)
+    ? (async () => {
+        try {
+          const config = telegramConfigFile(telegramPath, (event) =>
+            log(event),
+          );
+          if (!config().enabled) return undefined;
+          const token =
+            process.env.MR_ON_TELEGRAM_TOKEN ||
+            privateFile(join(dir, "telegram-token")).trim();
+          return await startTelegram(
+            store,
+            service.channel,
+            token,
+            config,
+            undefined,
+            (event) => log(event),
+          );
+        } catch {
+          log("telegram.start_failed");
+          return undefined;
+        }
+      })()
+    : Promise.resolve(undefined);
   let timer: ReturnType<typeof setInterval> | undefined;
   const server = app.listen(port, "127.0.0.1", () => {
     log("gateway.started", { port, pid: process.pid });
@@ -411,7 +443,12 @@ export function start() {
     deadline.unref();
     const httpClosed = new Promise<void>((done) => server.close(() => done()));
     stopping = (async () => {
-      await Promise.all([httpClosed, engine.stop(), profile.stop()]);
+      await Promise.all([
+        httpClosed,
+        engine.stop(),
+        profile.stop(),
+        telegram.then((adapter) => adapter?.stop()),
+      ]);
       store.close();
       release();
       clearTimeout(deadline);

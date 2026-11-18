@@ -198,7 +198,7 @@ export class Channel {
     identity: {
       principalId?: string;
       clientId: string;
-      channel: "web" | "cli";
+      channel: "web" | "cli" | "telegram";
     },
   ) {
     const binding = this.bind(id);
