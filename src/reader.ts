@@ -8,7 +8,9 @@ export function assertPublicAddress(address: string) {
   if (parsed.kind() === "ipv6" && (parsed as ipaddr.IPv6).isIPv4MappedAddress())
     parsed = (parsed as ipaddr.IPv6).toIPv4Address();
   if (parsed.range() !== "unicast")
-    throw Error("禁止访问本机、私有或特殊网络地址");
+    throw Error(
+      "Local, private, and special network addresses are not allowed",
+    );
 }
 export async function readPublicUrl(
   value: string,
@@ -24,18 +26,22 @@ export async function readPublicUrl(
       current.password ||
       !["", "80", "443"].includes(current.port)
     )
-      throw Error("仅支持公开 HTTP(S) 标准端口");
+      throw Error("Only standard public HTTP(S) ports are supported");
     const hostname = current.hostname.replace(/^\[|\]$/g, "");
     const addresses = await Promise.race([
       lookup(hostname, { all: true }),
       new Promise<never>((_, reject) => {
-        if (combined.aborted) return reject(Error("读取超时"));
-        combined.addEventListener("abort", () => reject(Error("读取超时")), {
-          once: true,
-        });
+        if (combined.aborted) return reject(Error("Read timed out"));
+        combined.addEventListener(
+          "abort",
+          () => reject(Error("Read timed out")),
+          {
+            once: true,
+          },
+        );
       }),
     ]);
-    if (!addresses.length) throw Error("域名无地址");
+    if (!addresses.length) throw Error("Domain has no addresses");
     for (const a of addresses) assertPublicAddress(a.address);
     const pinned = addresses[0];
     const result = await new Promise<{ location?: string; text?: string }>(
@@ -59,24 +65,25 @@ export async function readPublicUrl(
           (res) => {
             if ([301, 302, 303, 307, 308].includes(res.statusCode || 0)) {
               res.destroy();
-              if (!res.headers.location) return reject(Error("无效跳转"));
+              if (!res.headers.location)
+                return reject(Error("Invalid redirect"));
               return resolve({ location: res.headers.location });
             }
             if ((res.statusCode || 500) >= 400) {
               res.resume();
-              return reject(Error(`资料返回 HTTP ${res.statusCode}`));
+              return reject(Error(`Source returned HTTP ${res.statusCode}`));
             }
             const type = res.headers["content-type"] || "";
             if (!/^(text\/(plain|html)|application\/xhtml\+xml)/i.test(type)) {
               res.resume();
-              return reject(Error("仅支持文本和 HTML 资料"));
+              return reject(Error("Only text and HTML sources are supported"));
             }
             if (
               res.headers["content-encoding"] &&
               res.headers["content-encoding"] !== "identity"
             ) {
               res.destroy();
-              return reject(Error("不支持压缩响应"));
+              return reject(Error("Compressed responses are not supported"));
             }
             const parts: Buffer[] = [];
             let size = 0;
@@ -84,7 +91,7 @@ export async function readPublicUrl(
               size += b.length;
               if (size > 512000) {
                 res.destroy();
-                reject(Error("资料超过 500 KB 限制"));
+                reject(Error("Source exceeds the 500 KB limit"));
               } else parts.push(b);
             });
             res.on("error", reject);
@@ -97,8 +104,10 @@ export async function readPublicUrl(
               }
               text = text.replace(/\s+/g, " ").trim();
               if (text.length > 60000)
-                return reject(Error("正文超过 60,000 字符限制"));
-              if (!text) return reject(Error("资料正文为空"));
+                return reject(
+                  Error("Source text exceeds the 60,000 character limit"),
+                );
+              if (!text) return reject(Error("Source text is empty"));
               resolve({ text });
             });
           },
@@ -110,5 +119,5 @@ export async function readPublicUrl(
     if (result.text !== undefined) return result.text;
     current = new URL(result.location!, current);
   }
-  throw Error("跳转次数过多");
+  throw Error("Too many redirects");
 }

@@ -32,7 +32,7 @@ export class Store {
     }
     this.db
       .prepare(
-        "UPDATE runs SET status='interrupted',error='服务重启，执行中断；请手动重试。',finishedAt=? WHERE status='running'",
+        "UPDATE runs SET status='interrupted',error='Run interrupted by a service restart; please retry manually.',finishedAt=? WHERE status='running'",
       )
       .run(Date.now());
     this.db.exec(
@@ -61,13 +61,13 @@ export class Store {
   task(id: string) {
     const t = this.db.prepare("SELECT * FROM tasks WHERE id=?").get(id) as
       Row | undefined;
-    if (!t) throw Error("任务不存在");
+    if (!t) throw Error("Monitor not found");
     return t;
   }
   item(id: string) {
     const t = this.db.prepare("SELECT * FROM items WHERE id=?").get(id) as
       Row | undefined;
-    if (!t) throw Error("事项不存在");
+    if (!t) throw Error("Research thread not found");
     return t;
   }
   private txDepth = 0;
@@ -145,13 +145,15 @@ export class Store {
     return id;
   }
   receiveEvent(id: string, taskId: string, payload: unknown) {
-    if (!id || id.length > 200) throw Error("eventId 必须为 1–200 字符");
+    if (!id || id.length > 200)
+      throw Error("eventId must contain 1–200 characters");
     return this.tx(() => {
       const existing = this.db
         .prepare("SELECT taskId FROM events WHERE id=?")
         .get(id);
       if (existing) {
-        if (existing.taskId !== taskId) throw Error("eventId 已属于另一任务");
+        if (existing.taskId !== taskId)
+          throw Error("eventId already belongs to another monitor");
         return { duplicate: true, eventId: id };
       }
       this.task(taskId);
@@ -170,7 +172,7 @@ export class Store {
       !Number.isFinite(dueAt) ||
       dueAt < Date.now() - 60000
     )
-      throw Error("请填写问题与有效时间");
+      throw Error("Please provide a question and valid time");
     const id = randomUUID();
     this.db
       .prepare("INSERT INTO followups VALUES(?,?,?,?,?,'pending',NULL)")
@@ -223,11 +225,11 @@ export class Store {
     const baseUrl = String(c.baseUrl || old.baseUrl);
     const u = new URL(baseUrl);
     if (u.protocol !== "https:" || u.username || u.password)
-      throw Error("模型地址必须为不含凭据的 HTTPS URL");
+      throw Error("Model endpoint must be an HTTPS URL without credentials");
     const model = String(c.model || old.model).slice(0, 200);
     const apiKey =
       c.apiKey === undefined || c.apiKey === "" ? old.apiKey : String(c.apiKey);
-    if (mode === "live" && !apiKey) throw Error("请配置 API Key");
+    if (mode === "live" && !apiKey) throw Error("Please configure an API key");
     this.db
       .prepare(
         "INSERT INTO settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
@@ -271,7 +273,9 @@ export class Store {
       const run = this.db.prepare("SELECT * FROM runs WHERE id=?").get(id) as
         Row | undefined;
       if (!run || !["failed", "interrupted"].includes(run.status))
-        throw Error("只能重试尚未恢复的失败或中断运行");
+        throw Error(
+          "Only failed or interrupted runs that have not been retried can be retried",
+        );
       const runId = this.enqueue(
         run.taskId,
         run.kind,
@@ -298,7 +302,9 @@ function validateTask(t: Row) {
     goal = String(t.goal || "").trim(),
     url = String(t.url || "").trim();
   if (!name || name.length > 100 || !goal || goal.length > 2000)
-    throw Error("任务名 1–100 字符，研究目标 1–2000 字符");
+    throw Error(
+      "Monitor name must contain 1–100 characters and research goal 1–2000 characters",
+    );
   const u = new URL(url);
   if (
     !["https:", "http:"].includes(u.protocol) ||
@@ -306,13 +312,13 @@ function validateTask(t: Row) {
     u.password ||
     url.length > 2000
   )
-    throw Error("请输入公开 HTTP(S) URL");
+    throw Error("Please enter a public HTTP(S) URL");
   const intervalMinutes = Number(t.intervalMinutes);
   if (
     !Number.isInteger(intervalMinutes) ||
     intervalMinutes < 1 ||
     intervalMinutes > 43200
   )
-    throw Error("检查周期需为 1–43200 分钟");
+    throw Error("Check interval must be between 1 and 43200 minutes");
   return { name, goal, url, intervalMinutes };
 }

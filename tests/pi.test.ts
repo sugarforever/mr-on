@@ -17,7 +17,7 @@ test("real Pi SDK uses isolated resources and native persistent session with dem
       onSession: () => {},
     };
     const first = await agent.reply(input);
-    assert.match(first.text, /离线演示/);
+    assert.match(first.text, /Offline demo/);
     assert.ok(readFileSync(first.sessionPath, "utf8").includes("version 2"));
     const next = await agent.reply({
       ...input,
@@ -26,7 +26,7 @@ test("real Pi SDK uses isolated resources and native persistent session with dem
       sessionPath: first.sessionPath,
     });
     assert.equal(first.sessionId, next.sessionId);
-    assert.match(next.text, /第 2 条用户消息/);
+    assert.match(next.text, /user message 2/);
     assert.deepEqual(isolatedResources().getAgentsFiles().agentsFiles, []);
     assert.deepEqual(isolatedResources().getExtensions().extensions, []);
   } finally {

@@ -4,25 +4,28 @@ const screenshotDir = process.env.CI
   ? "test-results/screenshots"
   : "docs/screenshots";
 mkdirSync(screenshotDir, { recursive: true });
-test("Chinese workspace supports demo, persistent reply routing, task lifecycle, followup and webhook example", async ({
+test("English workspace supports demo, persistent reply routing, task lifecycle, followup and webhook example", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
   await expect(
-    page.getByRole("heading", { name: "工作概览", exact: true }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "体验离线演示" }).click();
+  await page.getByRole("button", { name: "Try the offline demo" }).click();
   await expect(
-    page.getByRole("heading", { name: "Pi 发布动态", exact: true }),
+    page.getByRole("heading", { name: "Pi releases", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("已建立初始基线，不发送通知", { exact: true }),
+    page.getByText("Initial baseline established; no notification sent", {
+      exact: true,
+    }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "模拟一次资料变化" }).click();
+  await page.getByRole("button", { name: "Simulate a source change" }).click();
   await expect(
-    page.getByRole("button").filter({ hasText: "Pi 发布动态 有新变化" }),
+    page.getByRole("button").filter({ hasText: "Pi releases has new changes" }),
   ).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.screenshot({
@@ -31,17 +34,21 @@ test("Chinese workspace supports demo, persistent reply routing, task lifecycle,
   });
   await page
     .getByRole("button")
-    .filter({ hasText: "Pi 发布动态 有新变化" })
+    .filter({ hasText: "Pi releases has new changes" })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByLabel("继续追问这次变化").fill("升级前应验证什么？");
-  await page.getByRole("button", { name: "发送 ↗" }).click();
+  await page
+    .getByLabel("Ask about this change")
+    .fill("What should we validate before upgrading?");
+  await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(
-    page.getByRole("dialog").getByText(/第 2 条用户消息/),
+    page.getByRole("dialog").getByText(/user message 2/),
   ).toBeVisible();
-  await page.getByLabel("安排后续分析").fill("继续研究迁移步骤");
-  await page.getByRole("button", { name: "安排跟进" }).click();
-  await expect(page.getByRole("status")).toContainText("后续分析已安排");
+  await page
+    .getByLabel("Schedule follow-up analysis")
+    .fill("Investigate migration steps");
+  await page.getByRole("button", { name: "Schedule follow-up" }).click();
+  await expect(page.getByRole("status")).toContainText("Follow-up scheduled");
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.getByRole("dialog").evaluate((el) => {
     el.scrollTop = 0;
@@ -51,39 +58,44 @@ test("Chinese workspace supports demo, persistent reply routing, task lifecycle,
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "关闭", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
     .filter({ visible: true })
     .click();
-  await page.getByRole("button", { name: "创建任务" }).click();
-  await page.getByLabel("任务名称").fill("公开文档监控");
-  await page.getByLabel("公开资料 URL").fill("https://example.com");
-  await page.getByLabel("研究目标").fill("关注文档的重要变化");
-  await page.getByRole("button", { name: "保存任务" }).click();
+  await page.getByRole("button", { name: "Create monitor" }).click();
+  await page.getByLabel("Monitor name").fill("Public documentation");
+  await page.getByLabel("Public source URL").fill("https://example.com");
+  await page
+    .getByLabel("Research goal")
+    .fill("Watch for important documentation changes");
+  await page.getByRole("button", { name: "Save monitor" }).click();
   await expect(
-    page.getByRole("heading", { name: "公开文档监控", exact: true }),
+    page.getByRole("heading", { name: "Public documentation", exact: true }),
   ).toBeVisible();
   const task = page.locator(".task").filter({
-    has: page.getByRole("heading", { name: "公开文档监控", exact: true }),
+    has: page.getByRole("heading", {
+      name: "Public documentation",
+      exact: true,
+    }),
   });
-  await task.getByRole("button", { name: "暂停", exact: true }).click();
-  await expect(task.getByText("已暂停", { exact: true })).toBeVisible();
-  await task.getByRole("button", { name: "恢复", exact: true }).click();
-  await expect(task.getByText("监控中", { exact: true })).toBeVisible();
-  await task.getByRole("button", { name: "编辑", exact: true }).click();
-  await page.getByLabel("任务名称").fill("公开文档监控（已编辑）");
-  await page.getByRole("button", { name: "保存任务" }).click();
+  await task.getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(task.getByText("Paused", { exact: true })).toBeVisible();
+  await task.getByRole("button", { name: "Resume", exact: true }).click();
+  await expect(task.getByText("Monitoring", { exact: true })).toBeVisible();
+  await task.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Monitor name").fill("Public documentation (edited)");
+  await page.getByRole("button", { name: "Save monitor" }).click();
   await expect(
-    page.getByRole("heading", { name: "公开文档监控（已编辑）" }),
+    page.getByRole("heading", { name: "Public documentation (edited)" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "事件与 Webhook" }).click();
+  await page.getByRole("button", { name: "Events & Webhook" }).click();
   await expect(page.locator("#webhook-example")).toContainText("events:$TOKEN");
-  await page.getByRole("button", { name: "模型设置" }).click();
+  await page.getByRole("button", { name: "Model settings" }).click();
   await page.getByLabel("API Key", { exact: true }).fill("ui-test-key");
-  await page.getByRole("button", { name: "保存设置" }).click();
-  await page.getByRole("button", { name: "模型设置" }).click();
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await page.getByRole("button", { name: "Model settings" }).click();
   await expect(page.getByLabel("API Key", { exact: true })).toHaveValue("");
   await page
-    .getByRole("button", { name: "关闭", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
     .filter({ visible: true })
     .click();
   expect(errors).toEqual([]);
@@ -92,7 +104,7 @@ test("mobile overview has no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "工作概览", exact: true }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   await expect
     .poll(() =>
@@ -112,60 +124,75 @@ test("proactive invitation opens a two-mode profile with editable memory and dur
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByRole("button", { name: "开始交流", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Start a conversation", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "关于我", exact: true }),
+    page.getByRole("heading", { name: "About me", exact: true }),
   ).toBeVisible();
-  const answer = page.getByLabel("你的回答 · 称呼与背景");
-  await answer.fill("请叫我林，我在做开源工具。");
-  await page.getByRole("button", { name: "刷新数据" }).click();
-  await expect(answer).toHaveValue("请叫我林，我在做开源工具。");
-  await page.getByRole("button", { name: "发送回答", exact: true }).click();
+  const answer = page.getByLabel("Your answer · Name and background");
+  await answer.fill("Call me Lin. I build open-source tools.");
+  await page.getByRole("button", { name: "Refresh data" }).click();
+  await expect(answer).toHaveValue("Call me Lin. I build open-source tools.");
+  await page.getByRole("button", { name: "Send answer", exact: true }).click();
   await expect(page.locator(".profile-transcript")).toContainText(
-    "谢谢你愿意告诉我这些",
+    "Thank you for sharing",
   );
   await expect(
     page.locator(".profile-fact").filter({
-      has: page.getByRole("heading", { name: "称呼与背景", exact: true }),
+      has: page.getByRole("heading", {
+        name: "Name and background",
+        exact: true,
+      }),
     }),
-  ).toContainText("请叫我林");
+  ).toContainText("Call me Lin");
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: `${screenshotDir}/profile-chat.png`,
     fullPage: true,
   });
-  await page.getByRole("button", { name: "暂时跳过", exact: true }).click();
-  await expect(page.getByLabel("你的回答 · 长期兴趣")).toBeVisible();
-  await page.getByRole("tab", { name: "一次性填写" }).click();
+  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await expect(
+    page.getByLabel("Your answer · Long-term interests"),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Fill in a form" }).click();
   await page
-    .getByLabel("交流偏好", { exact: false })
-    .fill("中文、直接、先结论再给理由。");
-  await page.getByRole("button", { name: "保存我的回答" }).click();
-  await expect(page.getByRole("status")).toContainText("共同背景已更新");
-  await page.getByRole("button", { name: "关闭主动邀请", exact: true }).click();
+    .getByLabel("Communication preferences", { exact: false })
+    .fill("English, direct, with the conclusion first.");
+  await page.getByRole("button", { name: "Save my answers" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Shared context updated",
+  );
+  await page
+    .getByRole("button", { name: "Disable invitations", exact: true })
+    .click();
   await expect(
     page
       .locator(".profile-controls")
-      .getByText("主动邀请已关闭", { exact: true }),
+      .getByText("Invitations disabled", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "关于我", exact: true }).click();
+  await page.getByRole("button", { name: "About me", exact: true }).click();
   await expect(page.locator(".profile-facts")).toContainText(
-    "中文、直接、先结论再给理由。",
+    "English, direct, with the conclusion first.",
   );
   await expect(page.getByRole("status")).toBeHidden({ timeout: 7000 });
   await page.screenshot({
     path: `${screenshotDir}/profile.png`,
     fullPage: true,
   });
-  await page.getByRole("button", { name: "删除全部画像与交流记录" }).click();
-  await page.getByRole("button", { name: "确认删除", exact: true }).click();
-  await expect(page.locator(".profile-facts")).not.toContainText("请叫我林");
+  await page
+    .getByRole("button", { name: "Delete profile and conversations" })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirm deletion", exact: true })
+    .click();
+  await expect(page.locator(".profile-facts")).not.toContainText("Call me Lin");
   await expect(
     page
       .locator(".profile-controls")
-      .getByText("主动邀请已关闭", { exact: true }),
+      .getByText("Invitations disabled", { exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -175,20 +202,20 @@ test("Gateway status becomes unknown on connection loss and recovers", async ({
 }) => {
   await page.goto("/");
   await expect(page.locator("#service-label")).toHaveText(
-    /后台服务运行中|正在处理事件/,
+    /Background service running|Processing events/,
   );
-  await expect(page.locator("#service-detail")).toContainText("心跳");
+  await expect(page.locator("#service-detail")).toContainText("Heartbeat");
   await page.route("**/api/state", (route) => route.abort());
   await expect(page.locator("#service-label")).toHaveText(
-    "连接中断 · 状态未知",
+    "Disconnected · Status unknown",
   );
-  await page.getByRole("button", { name: "监控任务" }).click();
+  await page.locator('.nav[data-view="tasks"]').click();
   await expect(page.locator("#service-label")).toHaveText(
-    "连接中断 · 状态未知",
+    "Disconnected · Status unknown",
   );
   await page.unroute("**/api/state");
   await expect(page.locator("#service-label")).toHaveText(
-    /后台服务运行中|正在处理事件/,
+    /Background service running|Processing events/,
   );
 });
 
@@ -201,11 +228,11 @@ test("Channel retry after lost acceptance is deduplicated and committed history 
   expect(item).toBeTruthy();
   await page
     .getByRole("button")
-    .filter({ hasText: "Pi 发布动态 有新变化" })
+    .filter({ hasText: "Pi releases has new changes" })
     .first()
     .click();
-  const question = "断线重试后的唯一问题";
-  await page.getByLabel("继续追问这次变化").fill(question);
+  const question = "A unique question after reconnecting";
+  await page.getByLabel("Ask about this change").fill(question);
   let lost = true;
   const requests = [];
   await page.route(
@@ -219,16 +246,16 @@ test("Channel retry after lost acceptance is deduplicated and committed history 
       } else await route.fulfill({ response });
     },
   );
-  await page.getByRole("button", { name: "发送 ↗" }).click();
+  await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.getByRole("status")).toHaveClass("error");
-  await page.getByRole("button", { name: "发送 ↗" }).click();
-  await expect(page.getByLabel("继续追问这次变化")).toHaveValue("");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.getByLabel("Ask about this change")).toHaveValue("");
   expect(requests.length).toBe(2);
   expect(requests[0].requestId).toBe(requests[1].requestId);
   await page.reload();
   await page
     .getByRole("button")
-    .filter({ hasText: "Pi 发布动态 有新变化" })
+    .filter({ hasText: "Pi releases has new changes" })
     .first()
     .click();
   await expect(

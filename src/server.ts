@@ -84,19 +84,19 @@ export function createApp(dir: string, webhookToken: string) {
     try {
       host = new URL(`http://${req.headers.host}`);
     } catch {
-      return res.status(403).json({ error: "无效主机" });
+      return res.status(403).json({ error: "Invalid host" });
     }
     if (!["127.0.0.1", "localhost", "[::1]"].includes(host.hostname))
-      return res.status(403).json({ error: "仅限本机访问" });
+      return res.status(403).json({ error: "Local access only" });
     if (req.headers.origin && req.headers.origin !== host.origin)
-      return res.status(403).json({ error: "拒绝跨站请求" });
+      return res.status(403).json({ error: "Cross-site request rejected" });
     if (req.headers["sec-fetch-site"] === "cross-site")
-      return res.status(403).json({ error: "拒绝跨站请求" });
+      return res.status(403).json({ error: "Cross-site request rejected" });
     if (
       ["POST", "PATCH", "PUT"].includes(req.method) &&
       !req.is("application/json")
     )
-      return res.status(415).json({ error: "请使用 application/json" });
+      return res.status(415).json({ error: "Please use application/json" });
     next();
   });
   app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -110,7 +110,9 @@ export function createApp(dir: string, webhookToken: string) {
   });
   app.use((req, res, next) => {
     if (runtime.stopping && req.method !== "GET")
-      return res.status(503).json({ error: "服务正在停止，请稍后重试" });
+      return res
+        .status(503)
+        .json({ error: "Service is shutting down; try again shortly" });
     next();
   });
   app.use("/api/profile/facts", express.json({ limit: "256kb" }));
@@ -154,7 +156,7 @@ export function createApp(dir: string, webhookToken: string) {
   });
   app.post("/api/profile/preferences", (req, res) => {
     if (typeof req.body.enabled !== "boolean")
-      throw Error("请填写有效的主动交流设置");
+      throw Error("Please provide valid invitation settings");
     profile.preferences(req.body.enabled);
     res.json({ ok: true });
   });
@@ -237,7 +239,7 @@ export function createApp(dir: string, webhookToken: string) {
       return res
         .status(401)
         .set("WWW-Authenticate", 'Basic realm="mr-on events"')
-        .json({ error: "需要 webhook Basic 认证" });
+        .json({ error: "Webhook Basic authentication required" });
     const result = store.receiveEvent(
       String(req.body.eventId || ""),
       String(req.body.taskId || ""),
@@ -248,14 +250,14 @@ export function createApp(dir: string, webhookToken: string) {
   });
   app.post("/api/demo/start", (req, res) => {
     if (store.config().mode !== "demo")
-      throw Error("请先在模型设置中切换至离线演示");
+      throw Error("Please switch to offline demo in model settings first");
     const previous = store.all("tasks").find((t) => t.url === DEMO_URL);
     const task =
       previous ||
       store.createTask({
-        name: "Pi 发布动态",
+        name: "Pi releases",
         url: DEMO_URL,
-        goal: "关注会话、事件和升级兼容性变化，并提出后续验证建议。",
+        goal: "Track session, event, and upgrade compatibility changes and suggest further validation.",
         intervalMinutes: 60,
       });
     const runId = store.enqueue(task.id);
@@ -263,9 +265,10 @@ export function createApp(dir: string, webhookToken: string) {
     res.json({ taskId: task.id, runId });
   });
   app.post("/api/demo/change", (_req, res) => {
-    if (store.config().mode !== "demo") throw Error("请先切换至离线演示");
+    if (store.config().mode !== "demo")
+      throw Error("Please switch to offline demo first");
     const task = store.all("tasks").find((t) => t.url === DEMO_URL);
-    if (!task) throw Error("请先载入演示任务");
+    if (!task) throw Error("Please load the demo monitor first");
     store.db.exec("UPDATE demo_document SET revision=revision+1 WHERE id=1");
     const runId = store.enqueue(task.id);
     void engine.drain();
@@ -287,11 +290,13 @@ export function createApp(dir: string, webhookToken: string) {
         return void res.status(err.status).json({ error: err.message });
       const clientError =
         err instanceof Error &&
-        /任务|事项|eventId|请输入|请先|请填|请配|周期|模型地址|问题|只能|演示|JSON|无效|too large|Unexpected|必须/.test(
+        /Monitor|Research thread|eventId|Please|interval|Model endpoint|Questions|Only|demo|JSON|Invalid|too large|Unexpected|must/i.test(
           err.message,
         );
       res.status(err.status === 413 ? 413 : 400).json({
-        error: clientError ? err.message : "请求失败，请检查输入与服务状态。",
+        error: clientError
+          ? err.message
+          : "Request failed. Check your input and service status.",
       });
     },
   );
@@ -342,7 +347,8 @@ function acquireLock(dir: string): () => void {
     } catch {
       alive = false;
     }
-    if (alive) throw Error("同一数据目录已有服务运行");
+    if (alive)
+      throw Error("A service is already running with this data directory");
     unlinkSync(path);
     return acquireLock(dir);
   }
@@ -356,7 +362,7 @@ export function start() {
   const dir = resolve(process.env.MR_ON_DATA || ".data");
   const port = Number(process.env.PORT || 4317);
   if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw Error("端口需为 1–65535");
+    throw Error("Port must be between 1 and 65535");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const release = acquireLock(dir);
   let service: ReturnType<typeof createApp>;
