@@ -2,6 +2,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { ServiceCommandError } from "./service-config.js";
 import { resolveDataDir } from "./paths.js";
 
 type Command = "start" | "service" | "client" | "onboard" | "configure";
@@ -59,13 +60,19 @@ export async function runCli(args: string[], handlers: CliHandlers = {}) {
   throw Error("此版本尚未包含引导配置；请使用本地网页的模型设置");
 }
 
+export function cliErrorMessage(error: unknown): string {
+  return error instanceof ServiceCommandError
+    ? error.message
+    : "命令失败；运行 mr-on --help 检查用法，或检查本地服务状态。";
+}
+
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href
 ) {
-  runCli(process.argv.slice(2)).catch(() => {
+  runCli(process.argv.slice(2)).catch((error) => {
     // Arguments and nested exceptions can contain credentials; never echo them.
-    console.error("命令失败；运行 mr-on --help 检查用法，或检查本地服务状态。");
+    console.error(cliErrorMessage(error));
     process.exitCode = 1;
   });
 }

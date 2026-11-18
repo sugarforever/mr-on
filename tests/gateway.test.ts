@@ -69,6 +69,10 @@ test(
     try {
       const first = launch();
       await waitReady();
+      assert.equal(
+        ((await (await fetch(base + "/readyz")).json()) as { pid: number }).pid,
+        first.pid,
+      );
       let state = (await (await fetch(base + "/api/state")).json()) as any;
       assert.equal(
         state.runs.find((r: any) => r.id === interrupted).status,

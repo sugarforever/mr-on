@@ -1,4 +1,7 @@
 import { isAbsolute, join } from "node:path";
+// Only explicitly controlled messages may cross the public CLI error boundary.
+export class ServiceCommandError extends Error {}
+
 export interface ServiceOptions {
   node: string;
   root: string;
@@ -11,13 +14,18 @@ const label = "ai.mr-on.gateway";
 export const serviceMarker = "Managed by mr-on gateway service";
 export function renderService(platform: string, o: ServiceOptions) {
   if (!["darwin", "linux"].includes(platform))
-    throw Error("仅支持 macOS 和 Linux");
+    throw new ServiceCommandError("仅支持 macOS 和 Linux");
   for (const path of [o.node, o.root, o.data, o.home])
     if (!isAbsolute(path) || /[\x00-\x1f\x7f]/.test(path))
-      throw Error("服务路径必须是无控制字符的绝对路径");
+      throw new ServiceCommandError("服务路径必须是无控制字符的绝对路径");
   if (!Number.isInteger(o.port) || o.port < 1 || o.port > 65535)
-    throw Error("端口需为 1–65535");
-  if (!Number.isInteger(o.uid) || o.uid < 0) throw Error("无效用户 ID");
+    throw new ServiceCommandError("端口需为 1–65535");
+  if (!Number.isInteger(o.uid) || o.uid < 0)
+    throw new ServiceCommandError("无效用户 ID");
+  if ([o.node, o.root].some((path) => /(?:^|[\\/])_npx(?:[\\/]|$)/.test(path)))
+    throw new ServiceCommandError(
+      "npx 缓存不能作为后台服务路径；请先 npm install -g mr-on，再运行 mr-on service install。",
+    );
   const script = join(o.root, "dist/src/server.js");
   const logs = join(o.data, "logs");
   if (platform === "darwin") {
