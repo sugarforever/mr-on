@@ -1,3 +1,4 @@
+import { validateModelSettings } from "./model-settings.js";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -6,7 +7,7 @@ export type Row = Record<string, any>;
 export class Store {
   db: DatabaseSync;
   dir: string;
-  constructor(dir: string) {
+  constructor(dir: string, options: { recover?: boolean } = {}) {
     this.dir = resolve(dir);
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     chmodSync(this.dir, 0o700);
@@ -30,14 +31,16 @@ export class Store {
     ) {
       this.db.exec("ALTER TABLE runs ADD COLUMN retryRunId TEXT");
     }
-    this.db
-      .prepare(
-        "UPDATE runs SET status='interrupted',error='Run interrupted by a service restart; please retry manually.',finishedAt=? WHERE status='running'",
-      )
-      .run(Date.now());
-    this.db.exec(
-      "UPDATE events SET status='interrupted' WHERE id IN (SELECT eventId FROM runs WHERE status='interrupted'); UPDATE followups SET status='interrupted' WHERE runId IN (SELECT id FROM runs WHERE status='interrupted');",
-    );
+    if (options.recover !== false) {
+      this.db
+        .prepare(
+          "UPDATE runs SET status='interrupted',error='Run interrupted by a service restart; please retry manually.',finishedAt=? WHERE status='running'",
+        )
+        .run(Date.now());
+      this.db.exec(
+        "UPDATE events SET status='interrupted' WHERE id IN (SELECT eventId FROM runs WHERE status='interrupted'); UPDATE followups SET status='interrupted' WHERE runId IN (SELECT id FROM runs WHERE status='interrupted');",
+      );
+    }
   }
   all(table: string): Row[] {
     if (
@@ -220,16 +223,10 @@ export class Store {
         };
   }
   saveConfig(c: Row) {
-    const old = this.config();
-    const mode = c.mode === "live" ? "live" : "demo";
-    const baseUrl = String(c.baseUrl || old.baseUrl);
-    const u = new URL(baseUrl);
-    if (u.protocol !== "https:" || u.username || u.password)
-      throw Error("Model endpoint must be an HTTPS URL without credentials");
-    const model = String(c.model || old.model).slice(0, 200);
-    const apiKey =
-      c.apiKey === undefined || c.apiKey === "" ? old.apiKey : String(c.apiKey);
-    if (mode === "live" && !apiKey) throw Error("Please configure an API key");
+    const { mode, baseUrl, model, apiKey } = validateModelSettings(
+      c,
+      this.config(),
+    );
     this.db
       .prepare(
         "INSERT INTO settings VALUES(1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",

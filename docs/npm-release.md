@@ -16,7 +16,7 @@ npx mr-on@latest
 
 默认前台运行，仅监听本机，端口 4317。通过 `PORT` 环境变量修改端口。
 `mr-on service --help`、`mr-on client --help` 查看命令；本阶段模型设置仍在网页中完成。
-引导配置由后续 PR 提供。后台服务生命周期由后续服务 PR 完善。
+使用 `mr-on onboard` 完成模型配置并选择是否安装后台服务；`mr-on configure` 只修改模型设置。详见 [终端引导](onboarding.md) 与 [后台服务](gateway-service.md)。
 
 所有打包命令的数据路径：`--data PATH` > `MR_ON_DATA` > `~/.mr-on`。
 相对路径按启动时工作目录解析。不要把数据放在 npm 安装目录或 npx 缓存。

@@ -51,6 +51,7 @@
     "LICENSE",
     "README.md",
     "docs/npm-release.md",
-    "docs/gateway-service.md"
+    "docs/gateway-service.md",
+    "docs/onboarding.md"
   ]
 }
