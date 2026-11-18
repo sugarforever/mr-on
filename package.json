@@ -14,7 +14,7 @@
     "test": "tsx --test tests/*.test.ts",
     "demo": "tsx src/demo.ts",
     "test:ui": "playwright test",
-    "format:check": "prettier --check src public tests skills .github \"docs/**/*.md\" README.md playwright.config.ts package.json package-lock.json tsconfig.json",
+    "format:check": "prettier --check src public tests scripts skills .github \"docs/**/*.md\" README.md playwright.config.ts package.json package-lock.json tsconfig.json release-please-config.json .release-please-manifest.json",
     "check:browser": "node --check public/app.js && node --check public/profile.js",
     "prepack": "npm run build",
     "test:package": "node tests/package-smoke.mjs"
