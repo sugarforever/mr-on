@@ -44,6 +44,19 @@ try {
   assert.equal(run(cli, ["--version"], { cwd: temp, env }).trim(), "0.1.0");
   assert(!readdirSync(temp).includes("unused-data"));
   assert(!readdirSync(temp).includes(".mr-on"));
+  for (const command of ["onboard", "configure"]) {
+    const nonInteractive = spawnSync(cli, [command], {
+      cwd: temp,
+      env,
+      encoding: "utf8",
+      input: "",
+    });
+    assert.equal(nonInteractive.status, 1);
+    assert.match(nonInteractive.stdout, /交互式/);
+    assert(!readdirSync(temp).includes("unused-data"));
+  }
+  assert(packed.files.some(({ path }) => path === "docs/onboarding.md"));
+  assert(packed.files.some(({ path }) => path === "docs/gateway-service.md"));
   const invalid = spawnSync(cli, ["unknown-secret-marker"], {
     cwd: temp,
     env,

@@ -107,7 +107,10 @@ test("non-TTY fails before creating data", async () => {
   try {
     await assert.rejects(
       runOnboarding("configure", join(f.dir, "absent"), {
-        io: terminalIO({ isTTY: false } as any, { isTTY: false } as any),
+        io: terminalIO(
+          { isTTY: false } as any,
+          { isTTY: false, write() {} } as any,
+        ),
       }),
       /交互式/,
     );
