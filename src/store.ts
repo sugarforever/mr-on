@@ -7,7 +7,7 @@ export type Row = Record<string, any>;
 export class Store {
   db: DatabaseSync;
   dir: string;
-  constructor(dir: string) {
+  constructor(dir: string, options: { recover?: boolean } = {}) {
     this.dir = resolve(dir);
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     chmodSync(this.dir, 0o700);
@@ -31,14 +31,16 @@ export class Store {
     ) {
       this.db.exec("ALTER TABLE runs ADD COLUMN retryRunId TEXT");
     }
-    this.db
-      .prepare(
-        "UPDATE runs SET status='interrupted',error='Run interrupted by a service restart; please retry manually.',finishedAt=? WHERE status='running'",
-      )
-      .run(Date.now());
-    this.db.exec(
-      "UPDATE events SET status='interrupted' WHERE id IN (SELECT eventId FROM runs WHERE status='interrupted'); UPDATE followups SET status='interrupted' WHERE runId IN (SELECT id FROM runs WHERE status='interrupted');",
-    );
+    if (options.recover !== false) {
+      this.db
+        .prepare(
+          "UPDATE runs SET status='interrupted',error='Run interrupted by a service restart; please retry manually.',finishedAt=? WHERE status='running'",
+        )
+        .run(Date.now());
+      this.db.exec(
+        "UPDATE events SET status='interrupted' WHERE id IN (SELECT eventId FROM runs WHERE status='interrupted'); UPDATE followups SET status='interrupted' WHERE runId IN (SELECT id FROM runs WHERE status='interrupted');",
+      );
+    }
   }
   all(table: string): Row[] {
     if (

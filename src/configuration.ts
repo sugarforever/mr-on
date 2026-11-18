@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { acquireLock } from "./data-lock.js";
 import { Store } from "./store.js";
@@ -66,7 +66,7 @@ export async function openConfiguration(dir: string) {
   }
   let store: Store;
   try {
-    store = new Store(dir);
+    store = new Store(dir, { recover: false });
   } catch (e) {
     release();
     throw e;

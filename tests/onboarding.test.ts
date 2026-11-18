@@ -264,3 +264,76 @@ test("connection test uses one bounded Pi Chat Completions request with fixed co
     },
   );
 });
+
+test("terminal key entry suppresses secret, supports erase and cancels on EOF", async () => {
+  const { PassThrough } = await import("node:stream");
+  const { terminalIO } = await import("../src/onboarding.js");
+  const input = new PassThrough() as any;
+  input.isTTY = true;
+  input.isRaw = false;
+  input.setRawMode = (v: boolean) => {
+    input.isRaw = v;
+  };
+  const output = new PassThrough() as any;
+  output.isTTY = true;
+  let displayed = "";
+  output.on("data", (b: Buffer) => (displayed += b));
+  const io = terminalIO(input, output);
+  const answer = io.ask("密钥", { secret: true });
+  for (const ch of "private") input.emit("keypress", ch, { name: ch });
+  input.emit("keypress", "", { name: "backspace" });
+  input.emit("keypress", "", { name: "return" });
+  assert.equal(await answer, "privat");
+  assert.ok(!displayed.includes("private"));
+  assert.equal(input.isRaw, false);
+  const ended = io.ask("下一步");
+  input.emit("end");
+  assert.equal(await ended, null);
+  assert.equal(input.isRaw, false);
+});
+test("service failure preserves saved configuration and offers a concrete next command", async () => {
+  const f = fixture(["demo", "y", "y"]);
+  try {
+    await runOnboarding("onboard", f.dir, {
+      io: f.io,
+      install: async () => {
+        throw Error("secret");
+      },
+    });
+    const s = new Store(f.dir);
+    assert.equal(s.config().mode, "demo");
+    s.close();
+    assert.ok(f.output.join("").includes("mr-on service install --data"));
+    assert.ok(!f.output.join("").includes("secret"));
+  } finally {
+    f.close();
+  }
+});
+test("stopped configuration does not perform gateway job recovery", async () => {
+  const { openConfiguration } = await import("../src/configuration.js");
+  const f = fixture([]);
+  try {
+    const s = new Store(f.dir);
+    const t = s.createTask({
+      name: "test",
+      url: "https://demo.mr-on.invalid/releases",
+      goal: "test",
+      intervalMinutes: 60,
+    });
+    const id = s.enqueue(t.id);
+    s.db.prepare("UPDATE runs SET status='running' WHERE id=?").run(id);
+    s.close();
+    const config = await openConfiguration(f.dir);
+    await config.save({ mode: "demo" });
+    config.close();
+    const { DatabaseSync } = await import("node:sqlite");
+    const db = new DatabaseSync(join(f.dir, "state.sqlite"));
+    assert.equal(
+      db.prepare("SELECT status FROM runs WHERE id=?").get(id)!.status,
+      "running",
+    );
+    db.close();
+  } finally {
+    f.close();
+  }
+});
