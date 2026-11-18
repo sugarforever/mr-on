@@ -50,6 +50,7 @@
     "skills/",
     "LICENSE",
     "README.md",
-    "docs/npm-release.md"
+    "docs/npm-release.md",
+    "docs/gateway-service.md"
   ]
 }
