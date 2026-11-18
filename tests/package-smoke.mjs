@@ -40,8 +40,8 @@ try {
     HOME: temp,
     MR_ON_DATA: join(temp, "unused-data"),
   };
-  for (const arg of ["--help", "--version"])
-    run(cli, [arg], { cwd: temp, env });
+  assert.match(run(cli, ["--help"], { cwd: temp, env }), /用法：mr-on/);
+  assert.equal(run(cli, ["--version"], { cwd: temp, env }).trim(), "0.1.0");
   assert(!readdirSync(temp).includes("unused-data"));
   assert(!readdirSync(temp).includes(".mr-on"));
   const invalid = spawnSync(cli, ["unknown-secret-marker"], {

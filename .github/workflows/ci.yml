@@ -51,6 +51,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run demo
+      - run: npm run test:package
 
   browser:
     name: Browser
