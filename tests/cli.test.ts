@@ -45,3 +45,57 @@ test("unknown commands and missing data fail before dispatch", async () => {
   await assert.rejects(runCli(["start", "--data"]), /--data/);
   await assert.rejects(runCli(["start", "--data", "--help"]), /--data/);
 });
+
+test("CLI shows controlled service recovery guidance but redacts arbitrary errors", async () => {
+  const cli = await import("../src/cli.js");
+  const config = await import("../src/service-config.js");
+  assert.equal(typeof cli.cliErrorMessage, "function");
+  const guidance = "npx 缓存不能作为后台服务路径；请先 npm install -g mr-on";
+  assert.equal(
+    cli.cliErrorMessage(new config.ServiceCommandError(guidance)),
+    guidance,
+  );
+  assert.doesNotMatch(
+    cli.cliErrorMessage(new Error("api-key-secret")),
+    /api-key-secret/,
+  );
+});
+
+test("executable rejects npx service targets with global-install guidance", async () => {
+  const { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } =
+    await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { spawnSync } = await import("node:child_process");
+  const root = mkdtempSync(join(tmpdir(), "mr-npx-cli-"));
+  try {
+    const pkg = join(root, "_npx/package");
+    mkdirSync(join(pkg, "src"), { recursive: true });
+    writeFileSync(join(pkg, "package.json"), '{"type":"module"}');
+    for (const file of [
+      "cli.ts",
+      "paths.ts",
+      "service.ts",
+      "service-config.ts",
+    ])
+      copyFileSync(resolve("src", file), join(pkg, "src", file));
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        import.meta.resolve("tsx"),
+        join(pkg, "src/cli.ts"),
+        "service",
+        "install",
+      ],
+      {
+        env: { ...process.env, HOME: root },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /npm install -g mr-on/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
