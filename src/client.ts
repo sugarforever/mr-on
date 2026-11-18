@@ -10,12 +10,12 @@ import {
   revokeCredential,
 } from "./credentials.js";
 
-export async function main(args = process.argv.slice(2)) {
+export async function main(args = process.argv.slice(2), data?: string) {
   const [command, conversation, ...rest] = args;
   const print = (value: unknown) => console.log(JSON.stringify(value));
   if (command === "credentials") {
     const path = join(
-      resolve(process.env.MR_ON_DATA || ".data"),
+      resolve(data || process.env.MR_ON_DATA || ".data"),
       "state.sqlite",
     );
     if (!existsSync(path))

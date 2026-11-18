@@ -143,3 +143,7 @@ npm run format:check
 [PR 检查与审核流程](docs/ci.md)
 
 Telegram private-chat access is available as an opt-in external Channel. See [Telegram setup, commands and delivery guarantees](docs/telegram.md).
+
+## npm 安装与发布
+
+打包命令与仓库脚本的数据目录不同；安装、旧数据路径及手动发布步骤见 [npm 安装与发布](docs/npm-release.md)。
