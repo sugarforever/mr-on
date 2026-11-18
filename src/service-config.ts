@@ -18,6 +18,10 @@ export function renderService(platform: string, o: ServiceOptions) {
   if (!Number.isInteger(o.port) || o.port < 1 || o.port > 65535)
     throw Error("端口需为 1–65535");
   if (!Number.isInteger(o.uid) || o.uid < 0) throw Error("无效用户 ID");
+  if ([o.node, o.root].some((path) => /(?:^|[\\/])_npx(?:[\\/]|$)/.test(path)))
+    throw Error(
+      "npx 缓存不能作为后台服务路径；请先 npm install -g mr-on，再运行 mr-on service install。",
+    );
   const script = join(o.root, "dist/src/server.js");
   const logs = join(o.data, "logs");
   if (platform === "darwin") {

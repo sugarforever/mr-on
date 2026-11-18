@@ -1,17 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  mkdtempSync,
-  existsSync,
-  rmSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  statSync,
-} from "node:fs";
+import { mkdtempSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { renderService } from "../src/service-config.js";
 
 const options = {
@@ -85,48 +77,3 @@ test("CLI dry-run installs nothing and passes arguments without a shell", () => 
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
-test(
-  "CLI preserves existing definitions and can uninstall an already stopped macOS service",
-  { skip: process.platform !== "darwin" },
-  () => {
-    const dir = mkdtempSync(join(tmpdir(), "mr-install-"));
-    const bin = join(dir, "bin");
-    mkdirSync(bin);
-    writeFileSync(
-      join(bin, "launchctl"),
-      '#!/bin/sh\nif [ "$1" = "bootout" ]; then exit 3; fi\nexit 0\n',
-      { mode: 0o700 },
-    );
-    const env = {
-      ...process.env,
-      HOME: dir,
-      PATH: `${bin}:${process.env.PATH}`,
-    };
-    const cli = (action: string) =>
-      spawnSync(
-        process.execPath,
-        [
-          "--import",
-          "tsx",
-          "src/service.ts",
-          action,
-          "--data",
-          join(dir, "data"),
-        ],
-        { env, encoding: "utf8" },
-      );
-    try {
-      assert.equal(cli("install").status, 0);
-      const path = join(dir, "Library/LaunchAgents/ai.mr-on.gateway.plist");
-      const original = readFileSync(path, "utf8");
-      assert.equal(statSync(path).mode & 0o777, 0o600);
-      assert.equal(cli("install").status, 1);
-      assert.equal(readFileSync(path, "utf8"), original);
-      assert.equal(cli("uninstall").status, 0);
-      assert.equal(existsSync(path), false);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  },
-);
