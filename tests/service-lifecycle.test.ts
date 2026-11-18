@@ -28,11 +28,14 @@ function fixture(platform = "linux") {
     uid: process.getuid!(),
     run: (argv: string[]) => {
       calls.push(argv);
-      return { status: 0 };
+      return {
+        status: 0,
+        stdout: platform === "darwin" ? "  pid = 12345\n" : "12345\n",
+      };
     },
     fetch: async (url: string) => {
       urls.push(url);
-      return { ok: true };
+      return { ok: true, json: async () => ({ ready: true, pid: 12345 }) };
     },
     output: (_text: string) => {},
     readinessTimeoutMs: 20,
@@ -163,7 +166,7 @@ test("macOS start is idempotent and stopped uninstall accepts ESRCH", async () =
     await service.main(["start"], f.io);
     assert.deepEqual(
       f.calls.map((a) => a[1]),
-      ["print"],
+      ["print", "print"],
     );
     await service.main(["uninstall"], {
       ...f.io,
@@ -240,7 +243,9 @@ test("readiness retries real HTTP 503 and aborts a stalled endpoint", async () =
     assert.equal(req.url, "/readyz");
     count++;
     if (stalled) return;
-    res.writeHead(count === 1 ? 503 : 200).end("{}");
+    res
+      .writeHead(count === 1 ? 503 : 200)
+      .end(JSON.stringify({ ready: true, pid: 12345 }));
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   const port = (server.address() as { port: number }).port;
@@ -267,6 +272,44 @@ test("readiness retries real HTTP 503 and aborts a stalled endpoint", async () =
   } finally {
     server.closeAllConnections();
     await new Promise<void>((done) => server.close(() => done()));
+    f.clean();
+  }
+});
+
+test("readiness rejects a healthy listener belonging to another process", async () => {
+  const f = fixture();
+  try {
+    await assert.rejects(
+      () =>
+        service.main(["install"], {
+          ...f.io,
+          fetch: async () => ({
+            ok: true,
+            json: async () => ({ ready: true, pid: 99999 }),
+          }),
+          run: () => ({ status: 0, stdout: "12345\n" }),
+          readinessTimeoutMs: 1,
+        }),
+      /readyz.*logs/,
+    );
+  } finally {
+    f.clean();
+  }
+});
+
+test("controls reject symlink definitions without executing a manager", async () => {
+  const { symlinkSync } = await import("node:fs");
+  const f = fixture();
+  try {
+    const dir = join(f.home, ".config/systemd/user");
+    mkdirSync(dir, { recursive: true });
+    const target = join(f.home, "other-file");
+    writeFileSync(target, "# Managed by mr-on gateway service\n");
+    symlinkSync(target, join(dir, "mr-on-gateway.service"));
+    await assert.rejects(() => service.main(["uninstall"], f.io), /安全/);
+    assert.equal(existsSync(target), true);
+    assert.equal(f.calls.length, 0);
+  } finally {
     f.clean();
   }
 });

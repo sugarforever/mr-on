@@ -108,7 +108,9 @@ export function createApp(dir: string, webhookToken: string) {
   app.get("/readyz", (_req, res) => {
     try {
       store.db.prepare("SELECT 1").get();
-      res.status(ready() ? 200 : 503).json({ ready: ready() });
+      res
+        .status(ready() ? 200 : 503)
+        .json({ ready: ready(), pid: process.pid });
     } catch {
       res.status(503).json({ ready: false });
     }
