@@ -141,3 +141,5 @@ npm run format:check
 [架构决策与 SDK 版本依据](docs/architecture.md) · [事项会话界面](docs/screenshots/research-thread.png)
 
 [PR 检查与审核流程](docs/ci.md)
+
+Telegram private-chat access is available as an opt-in external Channel. See [Telegram setup, commands and delivery guarantees](docs/telegram.md).
