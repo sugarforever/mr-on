@@ -8,11 +8,11 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { renderService, serviceMarker } from "./service-config.js";
 
-function main() {
-  const args = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)) {
+  args = [...args];
   const action = args.shift();
   const actions = [
     "install",
@@ -121,9 +121,12 @@ function main() {
     console.log("服务定义已删除，应用数据保留。");
   }
 }
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : "服务命令失败");
-  process.exitCode = 1;
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : "服务命令失败");
+    process.exitCode = 1;
+  });
 }

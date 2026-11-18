@@ -1,7 +1,6 @@
 {
   "name": "mr-on",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -16,7 +15,9 @@
     "demo": "tsx src/demo.ts",
     "test:ui": "playwright test",
     "format:check": "prettier --check src public tests skills .github \"docs/**/*.md\" README.md playwright.config.ts package.json package-lock.json tsconfig.json",
-    "check:browser": "node --check public/app.js && node --check public/profile.js"
+    "check:browser": "node --check public/app.js && node --check public/profile.js",
+    "prepack": "npm run build",
+    "test:package": "node tests/package-smoke.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "1.5.2",
@@ -33,5 +34,23 @@
     "prettier": "^3.10.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.2"
-  }
+  },
+  "description": "本地优先的持续研究助手与工作台",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sugarforever/mr-on.git"
+  },
+  "bin": {
+    "mr-on": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src/*.js",
+    "public/",
+    "skills/",
+    "LICENSE",
+    "README.md",
+    "docs/npm-release.md",
+    "docs/gateway-service.md"
+  ]
 }

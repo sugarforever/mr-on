@@ -133,7 +133,9 @@ test("Telegram outbox survives send failure, honors retry_after, purges revoked 
     await adapter.deliver(
       Number(
         svc.store.db
-          .prepare("SELECT nextAt FROM telegram_outbox ORDER BY id LIMIT 1")
+          .prepare(
+            "SELECT MAX(nextAt) AS nextAt FROM (SELECT nextAt FROM telegram_outbox UNION ALL SELECT nextAt FROM telegram_rate)",
+          )
           .get()!.nextAt,
       ),
     );
