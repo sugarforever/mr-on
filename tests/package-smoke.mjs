@@ -20,7 +20,7 @@ try {
   for (const { path } of packed.files) {
     assert.match(
       path,
-      /^(dist\/src\/[^/]+\.js|public\/.+|skills\/.+|package.json|LICENSE|README.md|docs\/(npm-release|gateway-service).md)$/,
+      /^(dist\/src\/[^/]+\.js|public\/.+|skills\/.+|package.json|LICENSE|README.md|docs\/(npm-release|gateway-service|onboarding).md)$/,
     );
     assert.doesNotMatch(
       path,

@@ -9,12 +9,7 @@ import {
 import { Channel, ChannelError } from "./channel.js";
 import { channelRoutes } from "./channel-http.js";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { Store } from "./store.js";

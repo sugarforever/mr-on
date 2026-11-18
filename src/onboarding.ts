@@ -77,6 +77,7 @@ export async function runOnboarding(
   const yes = async (text: string) =>
     (await ask(text + " [y/N]")).toLowerCase() === "y";
   let saved = false;
+  let installed = false;
   let config: Awaited<ReturnType<typeof openConfiguration>> | undefined;
   try {
     // Check interactivity before opening or creating any data.
@@ -142,6 +143,7 @@ export async function runOnboarding(
         );
         return;
       }
+      installed = true;
       if (await yes("打开本地工作台？")) {
         const { readFileSync } = await import("node:fs");
         const { join } = await import("node:path");
@@ -166,10 +168,24 @@ export async function runOnboarding(
     if (e === cancelled)
       io.write(
         saved
-          ? "已取消后续步骤；设置已保存。需要时运行 mr-on service install。"
+          ? installed
+            ? "已取消打开浏览器；设置已保存，服务已就绪。运行 mr-on service status --data " +
+              JSON.stringify(dir) +
+              " 查看状态。"
+            : "已取消后续步骤；设置已保存。需要时运行 mr-on service install --data " +
+              JSON.stringify(dir) +
+              "。"
           : "已取消；原有设置和服务保持不变。",
       );
-    else throw e;
+    else {
+      io.write(
+        "配置未完成；请在交互式终端检查 HTTPS 端点、模型和密钥，或确认网关配置未被占用。重试：mr-on " +
+          command +
+          " --data " +
+          JSON.stringify(dir),
+      );
+      throw e;
+    }
   } finally {
     config?.close();
   }

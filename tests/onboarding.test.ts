@@ -337,3 +337,16 @@ test("stopped configuration does not perform gateway job recovery", async () => 
     f.close();
   }
 });
+test("cancellation after save preserves exact custom data command", async () => {
+  const f = fixture(["demo", "y", null]);
+  try {
+    await runOnboarding("onboard", f.dir, { io: f.io });
+    assert.ok(
+      f.output
+        .join("")
+        .includes("mr-on service install --data " + JSON.stringify(f.dir)),
+    );
+  } finally {
+    f.close();
+  }
+});
