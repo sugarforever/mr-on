@@ -1,52 +1,52 @@
-# 主动了解用户
+# Proactively understand the user
 
-mr-on 在线时，除了检查资料，也会维护与用户共同工作的背景。第一版把这种主动性限定为可以回答、可以推迟、可以关闭的交流邀请。
+While online, mr-on maintains a shared working context as well as checking sources. The first version limits this proactive behavior to conversation invitations that users can answer, snooze, or disable.
 
-## 在线时做什么
+## Online behavior
 
-启动后检查是否已经有待回应的邀请。没有初始画像时创建一条邀请，通过首页卡片、收件箱和 SSE 传到已连接的客户端。用户离线时，邀请留在 SQLite 中，回来后仍可看到。只等待回应，不因进程重启追加同样的问候。
+Startup checks for an existing unanswered invitation. If there is no initial profile, it creates one and delivers it through the home card, inbox, and SSE to connected clients. Invitations remain in SQLite while users are offline, so they are visible on return. The service waits for a response instead of repeating the greeting after every restart.
 
-用户可以点“明天再说”，原邀请在 24 小时后重新出现；也可以关闭主动邀请。已经开始回答后，下一次更新邀请安排在七天后。如果那时用户还没有回应，继续等待，不每天重复催促。手动进入“关于我”不受主动邀请开关限制。
+Users can choose “Talk tomorrow” to bring back the same invitation after 24 hours, or disable proactive invitations. Once they start answering, the next update invitation is scheduled seven days later. If unanswered then, it waits rather than prompting daily. Manual access to “About me” remains available regardless of the invitation setting.
 
-这提供了最基本的在线行为：检查持久计划，处理到期事件，把值得回应的事交给用户，保存回答，再等待下一次有意义的互动。当前不做无目标的后台思考或持续模型调用。
+This provides basic online behavior: check persistent schedules, process due events, present something worth responding to, save the answer, and wait for the next useful interaction. It does not perform aimless background reasoning or continuous model calls.
 
-## 想了解的八个方面
+## Eight dimensions
 
-| 方面           | 基本问题                                   | 对协作的用途                         |
-| -------------- | ------------------------------------------ | ------------------------------------ |
-| 称呼与背景     | 我该怎么称呼你？现在主要在做什么？         | 避免反复询问背景，使用合适的称呼     |
-| 近期目标       | 一到三个月内最想推进什么？                 | 围绕具体目标组织研究，而不只罗列变化 |
-| 长期兴趣       | 哪些领域值得长期关注？                     | 判断后续信息的相关性                 |
-| 工作与决策方式 | 如何探索问题、选择方案、看待不同意见？     | 调整分析方式与建议形式               |
-| 交流偏好       | 喜欢什么语言、篇幅、语气和例子？           | 让回复更易用                         |
-| 日常节奏       | 何时有空，何时希望安静？                   | 了解提醒偏好，暂不自动修改系统日程   |
-| 授权与隐私边界 | 什么可以主动做，什么需要询问，什么不想谈？ | 尊重用户意愿，明确协作边界           |
-| 期待的帮助     | 最想减轻什么负担，怎样算帮上忙？           | 让后续行动有可观察的价值             |
+| Dimension                         | Basic question                                                                  | Use in collaboration                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Name and background               | What should I call you? What are you mainly working on?                         | Avoid repeated background questions and use the appropriate name         |
+| Near-term goals                   | What do you most want to advance in the next one to three months?               | Organize research around concrete goals instead of listing changes       |
+| Long-term interests               | Which areas deserve sustained attention?                                        | Assess the relevance of later information                                |
+| Work and decisions                | How do you explore problems, choose options, and approach disagreement?         | Adapt analysis and recommendations                                       |
+| Communication preferences         | What language, length, tone, and examples do you prefer?                        | Make replies easier to use                                               |
+| Daily rhythm                      | When are you available, and when do you prefer quiet?                           | Understand reminder preferences without automatically changing schedules |
+| Permission and privacy boundaries | What may happen proactively, what needs a question, and what is off limits?     | Respect preferences and define collaboration boundaries                  |
+| Desired help                      | What burden would you most like to reduce, and what would count as useful help? | Give later actions observable value                                      |
 
-定义保存在 `skills/understand-user/questions.json`。技能正文规定如何回应、如何处理未知与跳过，以及哪些行为由宿主负责。不是人格测试，不自动打 MBTI 或其他性格标签。
+Definitions live in `skills/understand-user/questions.json`. The skill explains how to respond, handle unknowns and skipped answers, and distinguish host responsibilities. This is not a personality test and does not automatically assign MBTI or other personality labels.
 
-## 两种界面
+## Two interfaces
 
-“聊一聊”一次展示一个问题。回答会按当前维度保存原话并注明时间和来源，模型用一两句话回应，客户端展示下一问。用户可以跳过，也可以点任意维度回来补充。已经回答的维度再次跳过，只跳过本轮更新并保留原自述。对话右侧显示当前保存的自述。
+“Chat” displays one question at a time. Answers are stored verbatim under the current dimension with time and source; the model responds in one or two sentences, and the client shows the next question. Users may skip or return to any dimension. Skipping a previously answered dimension skips this update only and retains the earlier statement. Current saved statements appear beside the conversation.
 
-“一次性填写”展示同一套八个问题，可以只填一部分。保存空字段会清除此项，保存已填字段会更新当前自述。编辑会清理旧画像对话并开始新的画像会话，避免已经改掉的信息继续存在于模型上下文。保存前有明确提示。
+“All at once” displays the same eight questions and allows partial completion. Saving an empty field clears it; saving a filled field updates the current statement. Editing clears the old profile conversation and starts a new session so superseded information does not remain in model context. The UI explains this before saving.
 
-删除操作需要在界面确认，会删除画像字段、邀请、画像交流记录、回复任务和专属 Pi 会话文件，并关闭主动邀请。监控任务、研究结果与研究会话保留；其中过去已经引用的背景不会追溯删除。这里的删除是应用记录删除，不承诺对 SQLite 空闲页或系统备份做取证级擦除。
+Deletion requires UI confirmation. It removes profile fields, invitations, conversation records, reply jobs, and dedicated Pi session files, and disables proactive invitations. Monitoring tasks, research results, and research sessions remain; background previously quoted there is not retroactively removed. Deletion removes application records and does not promise forensic erasure of SQLite free pages or system backups.
 
-客户端在 SSE 更新和轮询刷新时保留正在输入的草稿与焦点。通知是应用内消息，不请求操作系统通知权限，也不发送外部消息。
+SSE updates and polling preserve drafts and input focus. Notifications are in-app messages; the client neither requests operating-system notification permissions nor sends external messages.
 
-## 数据与执行
+## Data and execution
 
-`profile_state` 保存开关、下一次邀请时间和 Pi 会话关联；`profile_facts` 保存逐维度用户自述；`profile_invitations` 保存待回应邀请；`profile_messages` 和 `profile_jobs` 分别保存消息与回复执行。
+`profile_state` stores the enabled setting, next invitation time, and Pi session link; `profile_facts` stores user statements by dimension; `profile_invitations` stores pending invitations; `profile_messages` and `profile_jobs` store messages and reply execution respectively.
 
-回答 API 使用 requestId 去重。相同 ID、相同回答返回原任务；同一 ID 的不同内容被拒绝。画像回复队列只执行一个任务，忙碌时拒绝新的修改，避免编辑、遗忘与会话写入冲突。回答先持久保存，再调用模型；模型失败不会丢失回答，服务重启会把执行中的回复标为中断，允许明确重试。重试可能重复发送上下文给模型，但不会再插入一条用户回答。
+The answer API deduplicates by requestId. The same ID and answer return the original job; different content under the same ID is rejected. The profile reply queue executes one job at a time and rejects new changes while busy, preventing edits, forgetting, and session writes from conflicting. Answers are persisted before model execution. Model failure does not lose the answer; restart marks running replies interrupted and allows explicit retries. A retry may resend context to the model but does not insert another user answer.
 
-画像会话使用 Pi SDK 原生 SessionManager。`ResourceLoader` 只登记这一份随产品发布的 skill，并显式把其正文放入系统提示；画像模式工具 allowlist 为空。没有读取全局技能、任意文件、URL 或执行 shell 的能力。模型文字不会自动写回画像事实。
+Profile sessions use the Pi SDK's native SessionManager. `ResourceLoader` registers only the bundled skill and explicitly includes its body in the system prompt; profile mode has an empty tool allowlist. It cannot read global skills, arbitrary files, or URLs, or execute shell commands. Model text does not automatically update profile facts.
 
-后续资料研究会参考用户明确提供的目标、兴趣、工作方式、交流偏好和期待帮助。这些自述作为背景，不能扩大工具权限。真实模型模式下，画像交流的回答与已有画像会发给配置的模型服务，研究交流会发送上述选定字段；界面对此有提示。离线模式仍保存用户输入，但回复是固定演示。
+Subsequent research uses explicitly supplied goals, interests, working style, communication preferences, and desired help. These statements are context and cannot expand tool permissions. In real-model mode, profile replies and the existing profile go to the configured model service; research conversations send the selected fields above, as explained by the UI. Offline mode still saves input but produces fixed demo replies.
 
-## 已验证与暂未实现
+## Verified behavior and remaining work
 
-测试覆盖初次邀请、启动去重、稍后提醒、关闭邀请、画像会话复用、requestId 去重、编辑清理、遗忘、并发保护、中断重试、SSE 与客户端两种回答方式。技能格式由 SDK 加载和专门校验；也进行了无 skill / 有 skill 的对照场景：加载后将下一问和原话保存交给宿主，模型只作回应，不猜测时区或家庭背景。
+Tests cover first invitations, startup deduplication, snoozing, disabling invitations, profile session reuse, requestId deduplication, edit cleanup, forgetting, concurrency protection, interrupted retries, SSE, and both client answer modes. The skill was loaded by the SDK and validated separately. A comparison with and without it showed that loading delegates the next question and verbatim storage to the host, leaving the model to respond without guessing time zones or family background.
 
-当前采用固定的八个问题及七天邀请节奏。还没有自适应问题规划、从自由对话跨维度自动提取事实、画像冲突合并、按时区生效的安静时段或跨设备推送。真实模型的自然交流质量仍需凭据验证。
+The current implementation uses eight fixed questions and a seven-day invitation cadence. It does not yet support adaptive question planning, automatic cross-dimension fact extraction from free conversation, profile-conflict merging, time-zone-aware quiet hours, or cross-device push. Natural conversation quality with real models still requires credential-based validation.

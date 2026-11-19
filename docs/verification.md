@@ -1,51 +1,51 @@
-# 原型验证记录
+# Prototype verification record
 
-验证日期：2026-11-17。环境：macOS arm64、Node 26.8.1、Pi Coding Agent 1.5.2。SDK 安装包要求 Node >=22.19.0，项目与 README 已按此设置最低版本。
+Verification date: 2026-11-17. Environment: macOS arm64, Node 26.8.1, Pi Coding Agent 1.5.2. The SDK package requires Node >=22.19.0; the project and README use this minimum.
 
-## 已执行
+## Executed checks
 
-| 检查                   | 结果                                                        |
-| ---------------------- | ----------------------------------------------------------- |
-| `npm run build`        | TypeScript 编译成功                                         |
-| `npm test`             | 25 项单元与集成测试通过                                     |
-| `npm run demo`         | 离线端到端演示通过，使用真实 Pi SDK 和固定 provider fixture |
-| `npm run test:ui`      | 3 项 Chromium 测试通过，包含完整桌面操作与 390px 窄屏布局   |
-| `npm run format:check` | 通过                                                        |
-| `npm audit --omit=dev` | 未发现已知漏洞                                              |
-| `git diff --check`     | 通过                                                        |
-| 公开 URL smoke check   | `readPublicUrl('https://example.com')` 成功读取并归一化正文 |
+| Check                  | Result                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `npm run build`        | TypeScript compilation succeeded                                                    |
+| `npm test`             | 25 unit and integration tests passed                                                |
+| `npm run demo`         | Offline end-to-end demo passed using the real Pi SDK and a fixed provider fixture   |
+| `npm run test:ui`      | Three Chromium tests passed, including full desktop flows and a 390px narrow layout |
+| `npm run format:check` | Passed                                                                              |
+| `npm audit --omit=dev` | No known vulnerabilities found                                                      |
+| `git diff --check`     | Passed                                                                              |
+| Public URL smoke check | `readPublicUrl('https://example.com')` successfully read and normalized the body    |
 
-浏览器运行提示了环境同时设置 NO_COLOR 和 FORCE_COLOR 的无关警告，没有浏览器页面脚本异常。界面截图位于 `docs/screenshots/`，已查看工作概览与事项追问页面。
+The browser run reported an unrelated warning that both NO_COLOR and FORCE_COLOR were set; there were no browser page-script errors. UI screenshots are in `docs/screenshots/`; the overview and research follow-up screens were visually inspected.
 
-## 实际进程重启演示
+## Actual process restart demo
 
-除 SQLite 重开集成测试外，还在默认工作台上执行了真实服务进程停止与重启：
+In addition to SQLite reopen integration tests, the default workspace underwent a real service stop and restart:
 
-1. 创建演示任务，建立基线，更新资料生成一个事项和通知。
-2. 发送追问，确认同一 Pi sessionId，产生两条业务消息。
-3. 创建 4 秒后到期的 follow-up，在到期前向 Node 服务发送 SIGTERM。
-4. 等待 4.5 秒，重新 `npm start`。
-5. API 状态确认计划变为 `done`，执行仍使用原事项的 Pi sessionId，通知总数为 2，业务消息总数为 3。
+1. Create a demo task, establish its baseline, and update the source to generate one item and notification.
+2. Send a follow-up question, confirm the same Pi sessionId, and produce two business messages.
+3. Schedule a follow-up due in four seconds and send SIGTERM to the Node service before it is due.
+4. Wait 4.5 seconds, then run `npm start` again.
+5. Confirm through the API that the schedule is `done`, execution still uses the original item's Pi sessionId, and totals are two notifications and three business messages.
 
-默认工作台已保留这组离线演示数据，服务在本机 4317 端口运行。没有设置真实模型凭据，也没有发送外部通知。
+At the time of this verification, the default workspace retained these offline demo records and the local service ran on port 4317. No real model credentials were configured and no external notifications were sent.
 
-## 独立代码审查
+## Independent code review
 
-完成一次独立代码审查和修复后的复审。审查发现并修复：
+An independent code review and a follow-up review after fixes were completed. Review identified and fixed:
 
-- 同一失败运行可反复重试。现在替代运行入队与原运行标为 `retried` 在同一事务提交，保留 `retryRunId`，重复请求被拒绝。
-- 独立截断事项列表使旧事项的新通知失去详情。现在返回记录引用的旧事项也会保留，并有超过 100 个事项的回归测试。
+- A failed run could be retried repeatedly. Replacement enqueueing and marking the original `retried` now commit in one transaction, retaining `retryRunId` and rejecting duplicate requests.
+- Independently truncating item lists removed details for new notifications about old items. Items referenced by returned records are now retained, with a regression test covering more than 100 items.
 
-复审未发现剩余阻塞项。
+The follow-up review reported no remaining blockers.
 
-## 未验证的边界
+## Unverified boundaries
 
-未使用真实 API Key 测试外部模型；没有验证具体服务商的工具协议兼容性、真实分析质量或计费。没有验证公网部署、多用户、分布式执行和外部副作用，因为原型不提供这些能力。普通进程重启与 SQLite 事务测试不等于断电、磁盘损坏或工具执行现场的精确恢复。
+No real API key was used to test an external model; provider-specific tool compatibility, real analysis quality, and billing were not verified. Public deployment, multiple users, distributed execution, and external side effects were not tested because the prototype does not provide them. Normal process restarts and SQLite transaction tests do not establish recovery from power loss, disk corruption, or exact tool execution checkpoints.
 
-## 主动了解用户扩展
+## Proactive user-understanding extension
 
-新增画像启动邀请、逐轮回答、一次性填写、编辑、删除、七天更新节奏、SSE 通知、忙碌保护和中断回复重试。独立审查发现的批量中文正文大小限制与跳过已回答维度的记忆不一致均已修复，并加入回归测试；复审没有剩余重要阻塞项。
+Added startup profile invitations, turn-by-turn replies, an all-at-once form, editing, deletion, a seven-day update cadence, SSE notifications, busy protection, and interrupted-reply retry. Review findings involving bulk Chinese-text body limits and inconsistent memory when skipping an answered dimension were fixed with regression coverage; follow-up review reported no remaining significant blockers.
 
-understand-user skill 通过 SDK 的显式加载、quick_validate.py 格式校验，以及独立代理的加载前后行为对照：加载后按产品合同仅作简短回应，由宿主负责原话持久化和下一问，不猜测未知背景。没有验证真实在线模型的自然交流质量。
+The understand-user skill passed explicit SDK loading, quick_validate.py format validation, and an independent agent's before/after behavior comparison. Once loaded, it followed the product contract: brief responses only, with verbatim persistence and next-question selection delegated to the host, and no inference about unknown background. Natural conversation quality with a real online model was not verified.
 
-浏览器覆盖启动邀请进入、逐轮回答、草稿保留、跳过、一次性填写、重载后画像保持、开关及确认删除；截图见 `docs/screenshots/profile.png` 和 `profile-chat.png`。
+Browser coverage includes entering from the startup invitation, turn-by-turn answers, draft preservation, skipping, all-at-once answers, profile persistence after reload, the invitation setting, and confirmed deletion. Screenshots: `docs/screenshots/profile.png` and `profile-chat.png`.

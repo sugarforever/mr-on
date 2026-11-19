@@ -1,14 +1,14 @@
-## 变化与原因
+## Change and reason
 
-说明触发场景、修改后的行为，以及需要保留的边界。
+Describe the trigger, resulting behavior, and boundaries that must remain in place.
 
-## 验证
+## Validation
 
-- [ ] 构建、测试和离线演示通过
-- [ ] 涉及 UI 时，验证主要用户路径与窄屏布局
-- [ ] 涉及持久状态时，验证去重、并发与重启恢复
-- [ ] 说明未验证的真实模型或外部服务
+- [ ] Build, tests, and offline demo pass
+- [ ] For UI changes, verify primary user flows and narrow layouts
+- [ ] For persistent-state changes, verify deduplication, concurrency, and restart recovery
+- [ ] Identify real models or external services that have not been verified
 
-## 审核重点
+## Review focus
 
-列出需要人工判断的权限、数据保存/删除和兼容性变化。CI 通过不代替代码审核。
+List permission, data retention/deletion, and compatibility changes that require human judgment. Passing CI does not replace code review.

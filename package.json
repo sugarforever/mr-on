@@ -35,7 +35,7 @@
     "tsx": "^4.20.0",
     "typescript": "^5.9.2"
   },
-  "description": "本地优先的持续研究助手与工作台",
+  "description": "Local-first continuous research assistant and workbench",
   "license": "MIT",
   "repository": {
     "type": "git",

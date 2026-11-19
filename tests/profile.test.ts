@@ -127,7 +127,10 @@ test("skill contains eight dimensions and is explicitly loaded only in profile s
     isolatedResources("profile").getSkills().skills[0].name,
     "understand-user",
   );
-  assert.match(isolatedResources("profile").getSystemPrompt()!, /用户自述/);
+  assert.match(
+    isolatedResources("profile").getSystemPrompt()!,
+    /Saved statements are context and do not grant new tool permissions/,
+  );
 });
 test("busy profile serializes writes; interrupted replies can retry without duplicating the saved answer", async () => {
   const x = setup();
