@@ -1,27 +1,27 @@
-# 主动了解用户实施计划
+# Proactive user understanding implementation plan
 
-## 产品决定
+## Product decisions
 
-Always-on 的首个主动行为是邀请用户建立共同工作背景：启动时创建一条持久、可响应的应用内邀请；未回答时等待，不在每次启动重复催促。用户可以稍后处理、暂停主动交流或手动继续。完成一轮后每七天邀请更新一次，可关闭主动邀请。
+The first proactive always-on behavior invites the user to establish a shared working context. Startup creates a persistent, actionable in-app invitation; unanswered invitations wait rather than repeating on each startup. Users can snooze, disable proactive conversation, or continue manually. After a round, invite an update every seven days; proactive invitations can be disabled.
 
-八个了解维度覆盖称呼与背景、目标、兴趣、工作与决策、沟通、节奏、边界、期望帮助。问题与标签在产品 skill 的 questions.json 单处定义；SKILL.md 提供交流策略。产品仅加载这一份受信 skill，画像会话没有 URL、文件或 shell 工具。
+The eight dimensions cover name/background, goals, interests, work/decisions, communication, rhythm, boundaries, and desired help. Questions and labels have a single definition in the product skill's questions.json; SKILL.md provides conversation strategy. The product loads only this trusted skill, and profile sessions have no URL, file, or shell tools.
 
-对话页显示当前问题、回答记录与待回应状态。回答按当前维度记为用户自述，模型负责回应与澄清，不把推测自动写成事实。一次性表单使用同一维度集。画像可逐项修改、清空，整份删除会同时清理此画像的 Pi 历史。每次用户回复都有持久 requestId，支持去重；忙碌期间不并发写同一会话，重启标记中断并允许明确重试。
+The conversation page shows the current question, answer history, and pending-response state. Answers are stored under the current dimension as user statements. The model responds and clarifies without automatically treating inferences as facts. The all-at-once form uses the same dimensions. Individual entries can be edited or cleared; deleting the whole profile also clears its Pi history. Each reply has a persistent requestId for deduplication. Busy sessions reject concurrent writes; restart marks interrupted replies and allows explicit retries.
 
-## 文件边界
+## File boundaries
 
-- skills/understand-user/SKILL.md + questions.json：受信技能与问题库。
-- src/profile.ts：SQLite 画像、会话消息、主动邀请、回复队列、节奏与恢复。
-- src/agent.ts：显式加载技能；画像模式零工具；后续研究采用用户自述作相关性背景。
-- src/server.ts：启动/tick 邀请、SSE 变更通知、画像 API 与关闭清理。
-- public/profile.js + index/app/style：画像页、逐轮/表单切换、收件箱邀请路由、SSE 刷新，保留用户正在输入的内容。
-- tests/profile.test.ts + UI：启动去重、稍后/暂停/更新节奏、会话复用、请求去重、清除、重启与原监控回归。
+- skills/understand-user/SKILL.md + questions.json: trusted skill and question bank.
+- src/profile.ts: SQLite profile, conversation messages, proactive invitations, reply queue, cadence, and recovery.
+- src/agent.ts: explicit skill loading; no tools in profile mode; user statements provide relevance context for subsequent research.
+- src/server.ts: startup/tick invitations, SSE change notifications, profile API, and shutdown cleanup.
+- public/profile.js + index/app/style: profile page, conversation/form switch, inbox invitation routing, and SSE refresh while preserving in-progress input.
+- tests/profile.test.ts + UI: startup deduplication, snooze/disable/update cadence, session reuse, request deduplication, clearing, restart, and existing-monitoring regression coverage.
 
-## 验证步骤
+## Validation steps
 
-- [x] 先写并观察画像与技能加载的失败测试。
-- [x] 实现持久画像、邀请和受控 Pi 会话。
-- [x] 实现 API/SSE 与两种 UI，运行集成和浏览器检查。
-- [x] 独立审查，修复重要问题，记录保证与限制。
+- [x] Write and observe failing profile and skill-loading tests first.
+- [x] Implement persistent profiles, invitations, and controlled Pi sessions.
+- [x] Implement API/SSE and both UIs; run integration and browser checks.
+- [x] Obtain independent review, fix significant issues, and record guarantees and limitations.
 
-直接在本会话实施，不增加方案确认环节。现有版本已单独提交，新功能作为独立变更交付。
+Implement directly in the original conversation without another design-approval step. The existing version was committed separately; deliver the feature as an independent change.

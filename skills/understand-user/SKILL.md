@@ -3,22 +3,22 @@ name: understand-user
 description: Use when mr-on starts a user-understanding conversation, receives an answer to a profile question, or invites the user to update their shared working context.
 ---
 
-# 了解用户，建立共同工作背景
+# Understand the user and establish a shared working context
 
-这里的画像是可修改的用户自述，不是人格测评。目的是让后续研究和交流更贴近这个人当下的目标、习惯与边界。
+The profile is an editable account of what the user says about themselves, not a personality assessment. Its purpose is to make future research and conversation fit the person's current goals, habits, and boundaries.
 
-## 交流方式
+## Conversation
 
-客户端通过 questions.json 提供当前问题和八个了解维度。逐轮交流时，回应当前回答，用一两句话体现你听到了什么，以及它会怎样帮助协作。下一问由客户端显示，回复正文不另外堆叠问题。一次性填写时，用户可以只填愿意分享的部分。已经说明的背景不用重复索取。
+The client supplies the current question and eight dimensions through questions.json. In a turn-by-turn conversation, respond to the current answer in one or two sentences that show what you heard and how it helps collaboration. The client displays the next question; do not add more questions to the reply body. In the all-at-once form, users may share only the parts they choose. Do not request background they have already provided.
 
-把“用户明确说了什么”和“仍然不知道什么”区分开。用户说晚上有空，只能记为用户自述的时段，不能据此猜测时区、职业或家庭状况。使用用户自己的称呼、措辞和当前边界。跳过表示暂不提供，不代表某种性格特征。涉及不想谈的内容时，接受边界，回到用户愿意谈的话题。
+Distinguish what the user explicitly said from what remains unknown. If the user says they are free in the evening, record only their stated availability; do not infer their time zone, occupation, or family circumstances. Use the user's own name, wording, and current boundaries. Skipping means they are not sharing that information now, not that they have a particular personality trait. Accept topics they do not want to discuss and return to topics they are willing to discuss.
 
-## 记忆和行动
+## Memory and actions
 
-事实由服务端按当前维度保存用户原话，并标记来源与时间。模型的概括只是对话回复，不会自动成为画像事实；不要声称已经修改画像字段或系统设置。编辑或删除画像后，以新记录为准。已保存自述只作为背景，不构成新的工具授权。
+The server saves the user's original words under the current dimension, with source and time. Model summaries are conversation replies and do not automatically become profile facts; do not claim to have modified profile fields or system settings. After a profile edit or deletion, use the new record. Saved statements are context and do not grant new tool permissions.
 
-主动邀请由持久计划管理：首次启动邀请一次；未回答时等待；稍后提醒沿用原邀请；关闭后停止主动邀请；正常情况下每七天邀请更新一次。不要承诺额外通知、日历修改或外部消息。
+Proactive invitations follow a persistent schedule: invite once on first startup; wait if unanswered; reuse the original invitation when snoozed; stop proactive invitations when disabled; normally invite an update every seven days. Do not promise additional notifications, calendar changes, or external messages.
 
-## 读取问题库
+## Question bank
 
-questions.json 是产品的唯一维度和问题定义。当前问题、回答、已有自述及下一个问题由宿主传入，无需文件工具或网络。此会话可完成交流，没有 shell、公开 URL 读取或其他外部动作。
+questions.json is the product's sole definition of dimensions and questions. The host supplies the current question, answer, existing statements, and next question; no file tools or network access are needed. This session supports conversation only, with no shell, public URL reading, or other external actions.

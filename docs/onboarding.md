@@ -1,13 +1,13 @@
-# 终端引导与模型设置
+# Terminal onboarding and model settings
 
-全局安装后运行 `mron onboard`，在交互式终端选择离线演示或 OpenAI 兼容的 Chat Completions 服务。离线演示不调用模型。在线模式填写 HTTPS 端点、模型和密钥；密钥输入不回显，留空保留已有密钥。`mron configure` 只修改模型设置，不安装或重启服务。
+After a global install, run `mron onboard` in an interactive terminal to choose the offline demo or an OpenAI-compatible Chat Completions service. The offline demo makes no model calls. For online mode, enter an HTTPS endpoint, model, and key. Key entry is hidden; leaving it blank preserves an existing key. `mron configure` changes model settings only, without installing or restarting the service.
 
-在线连接测试默认跳过，只有明确输入 `y` 才发起：通过实际工作使用的 Pi `openai-completions` 协议发送固定的 `Reply OK.`，无工具、历史或用户资料，最多输出 8 tokens，15 秒超时，不重试。提供商可能收费。测试失败不保存设置，也不安装服务；修正后重新运行引导。保存前另有明确确认。真实提供商兼容性仍需使用你授权的密钥验证。
+The online connection test is skipped by default and runs only after an explicit `y`. It sends the fixed prompt `Reply OK.` using the same Pi `openai-completions` protocol as normal work, without tools, history, or user information. Output is capped at 8 tokens, with a 15-second timeout and no retry. The provider may charge for it. A failed test neither saves settings nor installs the service; correct the issue and rerun onboarding. Saving requires a separate confirmation. Real provider compatibility still requires verification with credentials you authorize.
 
-引导保存设置后，可以选择安装并启动当前用户服务；服务就绪后可以选择打开浏览器。可以跳过这两步，随后运行 `mron start` 或 `mron service install`。安装失败时，设置仍已保存，终端会给出重试命令。不要把 API 密钥写进命令行参数。
+After saving, onboarding offers to install and start the current user's service; once ready, it offers to open the browser. You can skip both steps and later run `mron start` or `mron service install`. If installation fails, settings remain saved and the terminal shows a retry command. Keep API keys out of command-line arguments.
 
-`--data /绝对路径` 优先于 `MR_ON_DATA`，默认使用 `~/.mr-on`。仓库已有 `.data` 不会迁移：继续使用旧数据时，显式传入原目录的绝对路径，例如 `mron configure --data /原仓库路径/.data`；服务安装和启动也使用同一路径。npm 开发脚本保留已有数据目录行为。
+`--data /absolute/path` takes precedence over `MR_ON_DATA`; the default is `~/.mr-on`. Existing repository `.data` directories are not migrated. To retain old data, explicitly supply its absolute path, such as `mron configure --data /original/repository/.data`, and use the same path for service installation and startup. npm development scripts retain their existing data-directory behavior.
 
-网关停止时，终端持有与网关相同的数据锁；另一个配置会话会拒绝同时打开。网关运行时，终端读取该数据目录记录的本地地址，通过带私有令牌的本地 API 读写，保持原有 Host、Origin 和 JSON 检查，不直接打开数据库。浏览器设置界面使用同一份验证与 SQLite 设置；新任务使用保存后的设置，正在运行的任务保持启动时捕获的配置。
+When the gateway is stopped, the terminal holds the same data lock as the gateway; a second configuration session is rejected. When it is running, the terminal reads the local address recorded in that data directory and uses a private-token local API, retaining Host, Origin, and JSON checks rather than opening the database directly. Browser settings use the same validation and SQLite settings. New jobs use saved settings; running jobs retain the configuration captured at startup.
 
-密钥保存在本地 SQLite 中，**未加密**。数据目录和数据库沿用现有私有权限，需自行保护备份。终端、API 响应和连接错误不会返回密钥。Ctrl-C、Ctrl-D 或输入结束会取消当前步骤；保存前取消不改设置，保存后取消只停止后续步骤，不卸载或停止已有服务。非交互终端拒绝引导并提示重试，不接收明文管道密钥。
+Keys are stored in local SQLite **without encryption**. The data directory and database retain existing private permissions; protect backups yourself. The terminal, API responses, and connection errors do not return keys. Ctrl-C, Ctrl-D, or end of input cancels the current step. Cancellation before saving changes no settings; cancellation afterward stops subsequent steps without uninstalling or stopping an existing service. Non-interactive terminals reject onboarding and show how to retry; plaintext piped keys are not accepted.
