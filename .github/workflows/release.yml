@@ -94,7 +94,7 @@ jobs:
         run: |
           mkdir -p release-artifacts
           npm pack --json --pack-destination release-artifacts > release-artifacts/pack.json
-          node -e 'const fs = require("node:fs"); const p = JSON.parse(fs.readFileSync("release-artifacts/pack.json"))[0]; fs.appendFileSync(process.env.GITHUB_ENV, `MR_ON_TARBALL=release-artifacts/${p.filename}\n`)'
+          node -e 'const fs = require("node:fs"); const p = JSON.parse(fs.readFileSync("release-artifacts/pack.json"))[0]; fs.appendFileSync(process.env.GITHUB_ENV, `MR_ON_TARBALL=${process.cwd()}/release-artifacts/${p.filename}\n`)'
       - name: Test the exact tarball to be published
         run: npm run test:package
       - name: Ensure verification did not modify tracked files

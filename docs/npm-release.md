@@ -67,7 +67,7 @@ mkdir -p release-artifacts
 npm pack --json --pack-destination release-artifacts
 # 使用上一步实际生成的文件名
 MR_ON_TARBALL="$PWD/release-artifacts/verysmallwoods-mron-0.1.0.tgz" npm run test:package
-npm publish release-artifacts/verysmallwoods-mron-0.1.0.tgz --access public --ignore-scripts
+npm publish ./release-artifacts/verysmallwoods-mron-0.1.0.tgz --access public --ignore-scripts
 ```
 
 检查 tarball 文件清单及测试结果后再执行最后一行，通过维护者交互认证完成发布。脚本中的版本仅为初次引导示例，必须与实际包版本一致。不要在参数、日志或 PR 中放令牌。发布后核对 registry 元数据，并从无源码目录安装已发布版本。
