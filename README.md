@@ -148,4 +148,4 @@ Telegram private-chat access is available as an opt-in external Channel. See [Te
 
 ## npm installation and releases
 
-Packaged commands and repository scripts use different default data directories. See [npm installation and releases](docs/npm-release.md) for installation, existing-data paths, and manual publication.
+Packaged commands and repository scripts use different default data directories. See [npm installation and releases](docs/npm-release.md) for installation, existing-data paths, and staged releases with maintainer approval.

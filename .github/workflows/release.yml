@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing stable release tag to retry publishing (for example v0.2.0)
+        description: Existing stable release tag to retry staging (for example v0.2.0)
         required: true
         type: string
 
@@ -48,7 +48,7 @@ jobs:
           branch=$(gh pr view "$number" --json headRefName --jq '.headRefName')
           gh workflow run ci.yml --ref "$branch"
 
-  publish:
+  stage:
     needs: release
     if: >-
       ${{ !cancelled() &&
@@ -77,10 +77,10 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - name: Validate release metadata and npm OIDC support
+      - name: Validate release metadata and npm staged publishing support
         run: |
           node scripts/release-metadata.ts
-          node -e 'const [major, minor, patch] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1)' "$(npm --version)"
+          node -e 'const [major, minor] = process.argv[1].split(".").map(Number); if (major < 11 || (major === 11 && minor < 15)) { console.error("Staged publishing requires npm >=11.15.0"); process.exit(1); }' "$(npm --version)"
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -95,9 +95,21 @@ jobs:
           mkdir -p release-artifacts
           npm pack --json --pack-destination release-artifacts > release-artifacts/pack.json
           node -e 'const fs = require("node:fs"); const p = JSON.parse(fs.readFileSync("release-artifacts/pack.json"))[0]; fs.appendFileSync(process.env.GITHUB_ENV, `MR_ON_TARBALL=${process.cwd()}/release-artifacts/${p.filename}\n`)'
-      - name: Test the exact tarball to be published
+      - name: Test the exact tarball to be staged
         run: npm run test:package
       - name: Ensure verification did not modify tracked files
         run: git diff --exit-code
-      - name: Publish verified tarball through npm OIDC
-        run: npm publish "$MR_ON_TARBALL" --access public --tag latest --ignore-scripts
+      - name: Stage verified tarball through npm OIDC
+        run: npm stage publish "$MR_ON_TARBALL" --access public --tag latest --ignore-scripts
+      - name: Record required human approval
+        run: |
+          {
+            echo '## Staged package awaiting npm approval'
+            echo 'This job stages the tested tarball; it does not make the version publicly installable.'
+            echo 'A maintainer must review the version, tag, provenance, and tarball, then approve it on npm with 2FA.'
+            echo 'Run `npm stage list @verysmallwoods/mron`, then `npm stage view <stage-id>` and `npm stage download <stage-id>`.'
+            echo 'Compare the downloaded tarball SHA-256 with:'
+            sha256sum "$MR_ON_TARBALL"
+            echo 'Approve only the intended stage using the npm website or `npm stage approve <stage-id>`.'
+            echo 'Keep approvals outside GitHub Actions. A green staging job is not a completed public release.'
+          } >> "$GITHUB_STEP_SUMMARY"
