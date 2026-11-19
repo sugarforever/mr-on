@@ -31,27 +31,48 @@ See [service documentation](gateway-service.md) for upgrades, absolute Node path
 
 After changes merge into `main`, `.github/workflows/release.yml` uses release-please to create or update a version PR, maintaining package.json, package-lock.json, CHANGELOG, and the version manifest. Use Conventional Commits, such as `feat: add a capability` or `fix: correct a failure`. During 0.x, features increment minor and fixes increment patch. The manifest starts at 0.1.0; history before the bootstrap commit is not repeated in release notes.
 
-release-please uses the built-in GITHUB_TOKEN and needs no GitHub App, App private key, or PAT. A version PR created by that token cannot be relied on to trigger pull_request CI automatically and may need human approval, so the workflow explicitly dispatches the existing ci.yml on the version PR branch. Results match the same head commit. GITHUB_TOKEN can trigger workflow_dispatch. The version PR must pass the existing Merge gate and be merged by a maintainer. release-please then creates a `vX.Y.Z` tag and GitHub Release; the publish job in the same workflow validates that tagged commit, not later main commits. A GitHub Release does not establish npm publication; check the publish job.
+release-please uses the built-in GITHUB_TOKEN and needs no GitHub App, App private key, or PAT. A version PR created by that token cannot be relied on to trigger pull_request CI automatically and may need human approval, so the workflow explicitly dispatches the existing ci.yml on the version PR branch. Results match the same head commit. GITHUB_TOKEN can trigger workflow_dispatch. The version PR must pass the existing Merge gate and be merged by a maintainer. release-please then creates a `vX.Y.Z` tag and GitHub Release; the stage job in the same workflow validates that tagged commit, not later main commits. A GitHub Release and a successful stage job do not establish npm publication: a maintainer must approve the staged package on npm with 2FA.
 
-The publish job rejects unstable versions, tags outside main history, and versions whose package.json/lockfile disagree with the tag. It runs the build, unit tests, demo, formatting/browser syntax checks, dependency audit, and browser tests, then builds a tarball. `MR_ON_TARBALL` makes the package test install and verify that tarball; npm subsequently publishes the same file with publish lifecycle scripts disabled. Publication uses Node 24, npm >=11.5.1, and OIDC, without NPM_TOKEN or an npm cache for the release build. Only stable releases to latest are supported, not beta/next.
+The stage job rejects unstable versions, tags outside main history, and versions whose package.json/lockfile disagree with the tag. It runs the build, unit tests, demo, formatting/browser syntax checks, dependency audit, and browser tests, then builds a tarball. `MR_ON_TARBALL` makes the package test install and verify that tarball; npm subsequently stages the same file with lifecycle scripts disabled. Staging uses Node 24, npm >=11.15.0, and OIDC, without NPM_TOKEN or an npm cache for the release build. Only stable releases targeting latest are supported, not beta/next. The tag is applied when the staged package is approved; staging alone does not change the public latest version.
 
 ### One-time setup
 
 1. In repository Settings → Actions → General → Workflow permissions, enable Allow GitHub Actions to create and approve pull requests. The release job explicitly requests Contents, Pull requests, Issues, and Actions write permissions; repository and organization policies must allow these. It only creates version PRs and explicitly triggers CI; it does not automatically approve or merge PRs.
 2. No RELEASE_APP_ID, RELEASE_APP_PRIVATE_KEY, or GitHub environment is required. Previously configured values are no longer used by the workflow.
-3. Confirm the npm package name and account permissions. If the package does not exist yet, a maintainer must first perform and inspect an interactive bootstrap publish before configuring a Trusted Publisher in package settings. The workflow does not perform that bootstrap. The manual flow below can bootstrap 0.1.0; release-please manages later versions.
-4. In the package's Trusted publishing settings, select GitHub Actions and bind owner `sugarforever`, repository `mr-on`, and workflow filename `release.yml`; leave environment blank and allow direct publishing. Names must match exactly. Use a GitHub-hosted runner. A new npm trust configuration must complete its first successful publication within npm's documented validity period; otherwise recreate it.
-5. Retain main's PR review and Merge gate protection, and restrict release-tag creation/modification. After the first automated release, verify the npm version and provenance. OIDC publication from a public repository to a public package automatically includes provenance.
+3. Confirm the npm package name and account permissions. The package already exists. For a future new package, create it through the manual staging flow below, then configure its Trusted Publisher. release-please manages later versions.
+4. In the package's Trusted publishing settings, select GitHub Actions and bind owner `sugarforever`, repository `mr-on`, and workflow filename `release.yml`; leave environment blank, disable **Allow npm publish**, and retain stage-only access. Leave **Allow npm dist-tag** disabled; the workflow does not need it. Names must match exactly. Use a GitHub-hosted runner. A new npm trust configuration must complete its first successful publication within npm's documented validity period; otherwise recreate it.
+5. In npm Publishing access, select **Require two-factor authentication and disallow tokens**. Keep 2FA enabled and remove obsolete bypass/automation tokens. OIDC staging remains available without a long-lived token.
+6. Retain main's PR review and Merge gate protection, and restrict release-tag creation/modification. After approval of the first staged release, verify the npm version and provenance. Keep npm approval outside Actions; never automate `npm stage approve` or store a maintainer approval credential in CI.
 
 ### Failures and retries
 
-If publication is interrupted or initial setup is incomplete, choose Run workflow in the Actions Release workflow, select main, and enter an existing tag (for example `v0.2.0`). This retries validation and publication for that tag without generating a new version. You can also rerun the original failed job. The tag must include this release workflow and validation script; do not use this entry point for an older bootstrap tag.
+If publication is interrupted or initial setup is incomplete, choose Run workflow in the Actions Release workflow, select main, and enter an existing tag (for example `v0.2.0`). This retries validation and staging for that tag without generating a new version. You can also rerun the original failed job. The tag must include this release workflow and validation script; do not use this entry point for an older bootstrap tag.
 
-Published npm versions cannot be overwritten. Repeating a successful publication fails rather than changing versions or ignoring errors. First check whether the registry already contains the version; if it does, verify the result without moving tags or force-pushing versions. If code needs fixing, commit the fix and release a new version. A failed publication does not automatically delete the GitHub Release.
+Staged and published versions share the same version namespace. Before retrying, use the npm website or a maintainer session with `npm stage list @verysmallwoods/mron` to check whether staging already succeeded; the CI OIDC token cannot list, view, or approve staged packages. Do not blindly re-stage a pending version. Published versions cannot be overwritten. If it is already published, verify the result without moving tags or force-pushing versions. If code needs fixing, commit the fix and release a new version. Do not use direct publication as a fallback. A staging failure does not automatically delete the GitHub Release.
 
-### Manual bootstrap and emergency publication
+### Review and approve a staged release
 
-First confirm a clean commit, version number, account permissions, and dependency licenses, then run these checks:
+After the stage job succeeds, wait for npm scanning to finish. In the npm Staged Packages page, or from a logged-in maintainer terminal:
+
+```sh
+npm stage list @verysmallwoods/mron
+npm stage view <stage-id>
+npm stage download <stage-id>
+```
+
+Check the package name, version, intended `latest` tag, source commit, provenance, and staged contents. Compare the downloaded tarball's SHA-256 with the stage job summary. Downloading does not install or execute it. Reject unexpected contents rather than approving a version based only on a green CI status.
+
+Approve the intended stage on npm, or run the following yourself and complete the 2FA challenge:
+
+```sh
+npm stage approve <stage-id>
+```
+
+This is the step that makes the version public. Actions never performs it. After approval and processing, verify registry metadata, provenance, and installation from a temporary directory without source code.
+
+### Manual bootstrap or emergency staging
+
+For a new package, staged publishing creates a publicly visible `0.0.0-stage` placeholder; the candidate package contents stay private until approval. Use the same review/approval process rather than enabling direct publishing or weakening token restrictions. Run the normal build, test, audit, browser, and package checks first:
 
 ```sh
 npm ci
@@ -65,14 +86,14 @@ npm run test:ui
 npm audit --audit-level=high
 mkdir -p release-artifacts
 npm pack --json --pack-destination release-artifacts
-# Use the actual filename generated by the preceding command
-MR_ON_TARBALL="$PWD/release-artifacts/verysmallwoods-mron-0.1.0.tgz" npm run test:package
-npm publish ./release-artifacts/verysmallwoods-mron-0.1.0.tgz --access public --ignore-scripts
+# Substitute the filename produced by npm pack.
+MR_ON_TARBALL="$PWD/release-artifacts/verysmallwoods-mron-VERSION.tgz" npm run test:package
+npm stage publish "$PWD/release-artifacts/verysmallwoods-mron-VERSION.tgz" --access public --tag latest --ignore-scripts
 ```
 
-Inspect the tarball file list and test results before running the last line, which publishes using the maintainer's interactive authentication. The version shown is only a bootstrap example and must match the actual package version. Keep tokens out of arguments, logs, and PRs. After publication, verify registry metadata and install the published version from a directory without source code.
+Inspect the tarball file list and test results before staging. Keep tokens out of arguments, logs, and PRs. For a new package, configure its Trusted Publisher after package creation. Use npm >=11.15.0 for all stage commands.
 
-References: [release-please](https://github.com/googleapis/release-please-action), [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/).
+References: [release-please](https://github.com/googleapis/release-please-action), [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/), [staged publishing](https://docs.npmjs.com/staged-publishing/).
 
 The explicit files allowlist excludes development-test artifacts. Runtime dependencies are still resolved and installed by npm;
 this is not a dependency-free binary. The Pi SDK has transitive dependencies for multiple providers. Recheck dependency audits and license inventories for every release.
