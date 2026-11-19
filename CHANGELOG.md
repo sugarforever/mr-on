@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/sugarforever/mr-on/compare/v0.1.1...v0.1.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **ci:** stage npm releases for maintainer approval ([#14](https://github.com/sugarforever/mr-on/issues/14)) ([4a7b7cb](https://github.com/sugarforever/mr-on/commit/4a7b7cb11acab1ceb16a1d94718d4167619375f8))
+
 ## [0.1.1](https://github.com/sugarforever/mr-on/compare/v0.1.0...v0.1.1) (2026-11-19)
 
 
