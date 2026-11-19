@@ -8,8 +8,8 @@ import { resolveDataDir } from "./paths.js";
 type Command = "start" | "service" | "client" | "onboard" | "configure";
 export type CliHandler = (args: string[], data: string) => unknown;
 export type CliHandlers = Partial<Record<Command, CliHandler>>;
-const help = `用法：mr-on [start|service|client|onboard|configure] [参数] [--data PATH]
-  mr-on / mr-on start   前台运行（默认端口 4317，仅本机）
+const help = `用法：mron [start|service|client|onboard|configure] [参数] [--data PATH]
+  mron / mron start   前台运行（默认端口 4317，仅本机）
   service              install|uninstall|start|stop|restart|status|logs
   client               list|history|send|watch|credentials
   onboard / configure  引导安装或仅修改模型设置
@@ -42,7 +42,7 @@ export async function runCli(args: string[], handlers: CliHandlers = {}) {
   }
   const command = (rest.shift() || "start") as Command;
   if (!["start", "service", "client", "onboard", "configure"].includes(command))
-    throw Error("未知命令；运行 mr-on --help 查看用法");
+    throw Error("未知命令；运行 mron --help 查看用法");
   if (rest.includes("--help") || rest.includes("-h")) {
     console.log(help);
     return;
@@ -65,7 +65,7 @@ export async function runCli(args: string[], handlers: CliHandlers = {}) {
 export function cliErrorMessage(error: unknown): string {
   return error instanceof ServiceCommandError
     ? error.message
-    : "命令失败；运行 mr-on --help 检查用法，或检查本地服务状态。";
+    : "命令失败；运行 mron --help 检查用法，或检查本地服务状态。";
 }
 
 if (

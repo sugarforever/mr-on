@@ -16,7 +16,7 @@ export function terminalIO(
     },
     async ask(text, options) {
       if (!input.isTTY || !output.isTTY)
-        throw Error("请在交互式终端运行 mr-on onboard 或 mr-on configure。");
+        throw Error("请在交互式终端运行 mron onboard 或 mron configure。");
       output.write(text + " ");
       emitKeypressEvents(input);
       const raw = input.isRaw;
@@ -115,7 +115,7 @@ export async function runOnboarding(
         io.write("连接测试通过。");
       } catch {
         io.write(
-          "连接测试失败；未保存设置，也未安装服务。请运行 mr-on configure 重试。",
+          "连接测试失败；未保存设置，也未安装服务。请运行 mron configure 重试。",
         );
         return;
       }
@@ -137,9 +137,9 @@ export async function runOnboarding(
         }
       } catch {
         io.write(
-          "设置已保存，但服务未确认就绪。请运行 mr-on service install --data " +
+          "设置已保存，但服务未确认就绪。请运行 mron service install --data " +
             JSON.stringify(dir) +
-            "，再检查 mr-on service status。",
+            "，再检查 mron service status。",
         );
         return;
       }
@@ -158,9 +158,9 @@ export async function runOnboarding(
       }
     } else
       io.write(
-        "需要时运行 mr-on start --data " +
+        "需要时运行 mron start --data " +
           JSON.stringify(dir) +
-          "，或 mr-on service install --data " +
+          "，或 mron service install --data " +
           JSON.stringify(dir) +
           "。",
       );
@@ -169,17 +169,17 @@ export async function runOnboarding(
       io.write(
         saved
           ? installed
-            ? "已取消打开浏览器；设置已保存，服务已就绪。运行 mr-on service status --data " +
+            ? "已取消打开浏览器；设置已保存，服务已就绪。运行 mron service status --data " +
               JSON.stringify(dir) +
               " 查看状态。"
-            : "已取消后续步骤；设置已保存。需要时运行 mr-on service install --data " +
+            : "已取消后续步骤；设置已保存。需要时运行 mron service install --data " +
               JSON.stringify(dir) +
               "。"
           : "已取消；原有设置和服务保持不变。",
       );
     else {
       io.write(
-        "配置未完成；请在交互式终端检查 HTTPS 端点、模型和密钥，或确认网关配置未被占用。重试：mr-on " +
+        "配置未完成；请在交互式终端检查 HTTPS 端点、模型和密钥，或确认网关配置未被占用。重试：mron " +
           command +
           " --data " +
           JSON.stringify(dir),

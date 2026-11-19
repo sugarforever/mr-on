@@ -8,7 +8,7 @@
 
 ## 安装与启动
 
-全局安装后运行 `mr-on onboard` 完成引导；使用 `mr-on configure` 随时修改模型设置。安装与发布状态见 [npm 发布说明](docs/npm-release.md)，配置细节见 [终端引导](docs/onboarding.md)。
+全局安装后运行 `mron onboard` 完成引导；使用 `mron configure` 随时修改模型设置。安装与发布状态见 [npm 发布说明](docs/npm-release.md)，配置细节见 [终端引导](docs/onboarding.md)。
 
 从源码运行时，需要 Node.js **22.19+**（开发验证环境为 Node 26.8.1）和 npm。
 
