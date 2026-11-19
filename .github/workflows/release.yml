@@ -22,22 +22,31 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
     outputs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      - name: Create release bot token
-        id: app
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
-          token: ${{ steps.app.outputs.token }}
+          token: ${{ github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      - name: Run CI for the bot-created version PR
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        run: |
+          number=$(printf '%s' "$RELEASE_PR" | jq -er '.number')
+          branch=$(gh pr view "$number" --json headRefName --jq '.headRefName')
+          gh workflow run ci.yml --ref "$branch"
 
   publish:
     needs: release
@@ -47,7 +56,6 @@ jobs:
            (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: npm
     permissions:
       contents: read
       id-token: write

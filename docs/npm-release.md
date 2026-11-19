@@ -33,16 +33,16 @@ SQLite 中保存的模型凭据**未加密**；保留目录与文件权限，备
 
 功能合并到 `main` 后，`.github/workflows/release.yml` 使用 release-please 创建或更新版本 PR，自动维护 package.json、package-lock.json、CHANGELOG 和版本 manifest。提交信息使用 Conventional Commits，例如 `feat: add a capability`、`fix: correct a failure`。0.x 阶段功能升 minor、修复升 patch。manifest 从现有 0.1.0 开始，bootstrap 提交之前的历史不会重复进入发布说明。
 
-版本 PR 必须通过现有 Merge gate，由维护者合并。release-please 随后创建 `vX.Y.Z` 标签与 GitHub Release；同一工作流中的 publish job 使用该标签的提交进行验证，不发布后来新增的 main 提交。GitHub Release 已创建不代表 npm 已发布，需检查 publish job。
+release-please 使用内置 GITHUB_TOKEN，无需 GitHub App、App 私钥或 PAT。该 token 创建的版本 PR 的 pull_request CI 可能需要人工批准，无法依赖它自动运行，因此工作流会显式 dispatch 现有 ci.yml 到版本 PR 的分支，检查结果对应相同 head commit。workflow_dispatch 可以由 GITHUB_TOKEN 触发；版本 PR 必须通过现有 Merge gate，由维护者合并。release-please 随后创建 `vX.Y.Z` 标签与 GitHub Release；同一工作流中的 publish job 使用该标签的提交进行验证，不发布后来新增的 main 提交。GitHub Release 已创建不代表 npm 已发布，需检查 publish job。
 
 发布 job 拒绝非稳定版本、main 之外的标签，以及 package.json/lockfile 与标签不一致的版本。它执行构建、单元测试、演示、格式/浏览器语法、依赖审计和浏览器测试，再构建 tarball。`MR_ON_TARBALL` 让打包测试安装并验证这份 tarball，随后 npm 发布同一文件，禁用 publish 生命周期脚本。发布使用 Node 24、npm >=11.5.1 和 OIDC，不设置 NPM_TOKEN，发布构建不使用 npm 缓存。当前只发布 stable 到 latest，不处理 beta/next。
 
 ### 一次性配置
 
-1. 创建仅安装到此仓库的 GitHub App，授予 repository Contents、Pull requests、Issues 读写权限。将 App ID 存入仓库变量 `RELEASE_APP_ID`，私钥存入 Actions secret `RELEASE_APP_PRIVATE_KEY`。App token 让版本 PR 正常触发 CI，避免默认 GITHUB_TOKEN 创建的 PR 不触发检查。App 不需绕过分支保护，不自动合并版本 PR。
-2. 创建 GitHub environment `npm`，限制发布工作流仅从 main 运行。可按团队需要配置 required reviewers；不配置时，合并版本 PR 后自动发布。
+1. 在仓库 Settings → Actions → General → Workflow permissions 中，启用 Allow GitHub Actions to create and approve pull requests。工作流在 release job 内明确申请 Contents、Pull requests、Issues 和 Actions 写权限；仓库或组织策略必须允许这些权限。它只创建版本 PR 和显式触发 CI，不自动批准或合并 PR。
+2. 无需配置 RELEASE_APP_ID、RELEASE_APP_PRIVATE_KEY 或 GitHub environment。若之前已配置，工作流不再使用它们。
 3. 确认 npm 包名与账号权限。如果包尚不存在，需维护者先通过交互式认证完成一次引导发布并检查内容，才能在包设置中配置 Trusted Publisher。本变更不会执行该操作。0.1.0 可按下方手动流程引导；后续由 release-please 管理版本。
-4. 在 npm 包的 Trusted publishing 中选择 GitHub Actions，绑定 owner `sugarforever`、repository `mr-on`、workflow filename `release.yml`、environment `npm`，允许直接 publish。名称必须精确匹配。使用 GitHub-hosted runner。npm 新建信任配置需在官方规定的有效期内完成首次成功发布，否则重建配置。
+4. 在 npm 包的 Trusted publishing 中选择 GitHub Actions，绑定 owner `sugarforever`、repository `mr-on`、workflow filename `release.yml`、environment 留空，允许直接 publish。名称必须精确匹配。使用 GitHub-hosted runner。npm 新建信任配置需在官方规定的有效期内完成首次成功发布，否则重建配置。
 5. 保留 main 的 PR 审核和 Merge gate 保护，并限制 release 标签的创建/修改权限。完成首次自动发布后，核对 npm 版本和 provenance。公开仓库与公开包通过 OIDC 发布时自动附带 provenance。
 
 ### 失败与重试
