@@ -24,7 +24,7 @@ export function renderService(platform: string, o: ServiceOptions) {
     throw new ServiceCommandError("无效用户 ID");
   if ([o.node, o.root].some((path) => /(?:^|[\\/])_npx(?:[\\/]|$)/.test(path)))
     throw new ServiceCommandError(
-      "npx 缓存不能作为后台服务路径；请先 npm install -g mr-on，再运行 mr-on service install。",
+      "npx 缓存不能作为后台服务路径；请先 npm install -g @verysmallwoods/mron，再运行 mron service install。",
     );
   const script = join(o.root, "dist/src/server.js");
   const logs = join(o.data, "logs");

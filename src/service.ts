@@ -89,7 +89,7 @@ export async function main(
   ] as const;
   if (!actions.includes(action as any))
     throw new ServiceCommandError(
-      "用法：mr-on service install|uninstall|start|stop|restart|status|logs [--dry-run] [--data PATH] [--port N]",
+      "用法：mron service install|uninstall|start|stop|restart|status|logs [--dry-run] [--data PATH] [--port N]",
     );
   let dryRun = false;
   let platform = runtime.platform ?? process.platform;
@@ -183,7 +183,7 @@ export async function main(
         return;
       }
       throw new ServiceCommandError(
-        "mr-on 服务未安装；请先运行 mr-on service install。",
+        "mr-on 服务未安装；请先运行 mron service install。",
       );
     }
   }
@@ -214,14 +214,14 @@ export async function main(
       (result.status !== 0 && !allowed.includes(result.status ?? -1))
     )
       throw new ServiceCommandError(
-        `系统命令失败（${result.status ?? result.signal ?? "无法执行"}）；用 mr-on service status 和 mr-on service logs 检查服务。`,
+        `系统命令失败（${result.status ?? result.signal ?? "无法执行"}）；用 mron service status 和 mron service logs 检查服务。`,
       );
     return result.status;
   };
   if (action === "install") {
     if (!existsSync(resolve(root, "dist/src/server.js")))
       throw new ServiceCommandError(
-        "缺少构建后的服务；全局安装请重新 npm install -g mr-on，源码安装请先 npm run build。",
+        "缺少构建后的服务；全局安装请重新 npm install -g @verysmallwoods/mron，源码安装请先 npm run build。",
       );
     mkdirSync(dirname(definition.path), { recursive: true, mode: 0o700 });
     mkdirSync(definition.logs, { recursive: true, mode: 0o700 });
@@ -310,7 +310,7 @@ export async function main(
       );
     }
     throw new ServiceCommandError(
-      `服务尚未就绪：${url}；请运行 mr-on service status 和 mr-on service logs 排查端口、数据锁或启动失败。定义与数据已保留。`,
+      `服务尚未就绪：${url}；请运行 mron service status 和 mron service logs 排查端口、数据锁或启动失败。定义与数据已保留。`,
     );
   }
 }

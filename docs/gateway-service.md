@@ -7,21 +7,21 @@ mr-on 的 Gateway 就是现有 Node/Express 服务：监听本机 API、接收 w
 全局安装后，可从任意目录运行：
 
 ```bash
-npm install -g mr-on
-mr-on service install --dry-run
-mr-on service install
-mr-on service status
-mr-on service logs
+npm install -g @verysmallwoods/mron
+mron service install --dry-run
+mron service install
+mron service status
+mron service logs
 ```
 
 预览只输出配置文件路径、内容与原生命令，不创建目录、不安装、不启动服务。安装写入用户服务定义并启动服务，随后最多等待 30 秒检查本机 `/readyz`，并核对响应 PID 与系统服务管理器的进程，避免把占用同一端口的其他服务误判为本次启动成功。start/restart 也等待就绪；探测不调用模型。超时或系统命令失败时退出非零，保留定义与数据，按提示用 status/logs 排查；不要用重复安装覆盖错误。--dry-run 不执行就绪探测。
 
-只支持普通用户，不使用 sudo，不覆盖现有定义，也不管理缺少 mr-on 标记、属于其他用户或是符号链接的定义。应用与 Node 使用安装时的绝对路径；不要在运行中移动包目录或删除这版 Node。通过 nvm 等更新 Node 路径后，需要停止、卸载服务定义，再用新的 Node 重新安装。`npx` 的临时缓存不能作为服务依赖：请先全局安装，再运行 `mr-on service install`。npx 前台试用不安装后台服务。
+只支持普通用户，不使用 sudo，不覆盖现有定义，也不管理缺少 mr-on 标记、属于其他用户或是符号链接的定义。应用与 Node 使用安装时的绝对路径；不要在运行中移动包目录或删除这版 Node。通过 nvm 等更新 Node 路径后，需要停止、卸载服务定义，再用新的 Node 重新安装。`npx` 的临时缓存不能作为服务依赖：请先全局安装，再运行 `mron service install`。npx 前台试用不安装后台服务。
 
 打包命令的数据目录优先级为显式 `--data`、`MR_ON_DATA`、`~/.mr-on`，不取决于包目录或当前工作目录。源码开发仍可使用 `npm ci`、`npm run build` 和 `npm run service -- install`，其默认数据目录继续为仓库 `.data`。已有用户要继续使用原数据库，必须明确给出原来的绝对路径：
 
 ```bash
-mr-on service install --data /absolute/path/to/mr-on/.data --port 4317 --dry-run
+mron service install --data /absolute/path/to/mr-on/.data --port 4317 --dry-run
 ```
 
 不会自动搬迁数据或切换现有数据库。`--data` 相对调用命令时的目录解析；后台运行时已固化为绝对路径。后续控制命令从已安装定义读取数据目录、日志位置和端口，忽略当前的 --data/--port、环境默认值及工作目录；要改配置需卸载定义后重新安装。一个用户仅支持一个已安装的 mr-on Gateway。
@@ -29,10 +29,10 @@ mr-on service install --data /absolute/path/to/mr-on/.data --port 4317 --dry-run
 其他管理命令：
 
 ```bash
-mr-on service stop
-mr-on service start
-mr-on service restart
-mr-on service uninstall
+mron service stop
+mron service start
+mron service restart
+mron service uninstall
 ```
 
 `stop` 停止托管服务，不会被 KeepAlive/Restart 立即拉起；`start` 恢复。macOS `restart` 先 bootout 优雅停止，再 bootstrap 启动，不使用强杀式 kickstart。`uninstall` 停止并删除定义，保留数据。原生命令失败时退出非零并保留定义供排查；不要用重复安装来修复错误。`status` 显示系统服务管理器状态，已停止或尚未安装也可重复查询；未安装时 stop/uninstall 不做修改。macOS start 对已加载服务不重复 bootstrap。应用就绪状态可用下方探测确认。
@@ -78,11 +78,11 @@ Linux 日志由 journal 管理并沿用系统保留策略。macOS 输出到数�
 全局包升级顺序（固定版本号由你选择）：
 
 ```bash
-mr-on service stop
-mr-on service status
+mron service stop
+mron service status
 # 确认停止后，将整个数据目录备份到受保护的位置
-npm install -g mr-on@VERSION
-mr-on service start
+npm install -g @verysmallwoods/mron@VERSION
+mron service start
 # start 会等就绪；然后检查执行记录与实际安装端口的 readyz
 ```
 

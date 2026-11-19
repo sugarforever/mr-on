@@ -306,7 +306,7 @@ test("service failure preserves saved configuration and offers a concrete next c
     const s = new Store(f.dir);
     assert.equal(s.config().mode, "demo");
     s.close();
-    assert.ok(f.output.join("").includes("mr-on service install --data"));
+    assert.ok(f.output.join("").includes("mron service install --data"));
     assert.ok(!f.output.join("").includes("secret"));
   } finally {
     f.close();
@@ -347,7 +347,7 @@ test("cancellation after save preserves exact custom data command", async () => 
     assert.ok(
       f.output
         .join("")
-        .includes("mr-on service install --data " + JSON.stringify(f.dir)),
+        .includes("mron service install --data " + JSON.stringify(f.dir)),
     );
   } finally {
     f.close();

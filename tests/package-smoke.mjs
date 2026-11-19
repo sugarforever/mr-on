@@ -38,13 +38,13 @@ try {
     );
   }
   run("npm", ["install", "--prefix", temp, "--omit=dev", tarball]);
-  const cli = join(temp, "node_modules/.bin/mr-on");
+  const cli = join(temp, "node_modules/.bin/mron");
   const env = {
     ...process.env,
     HOME: temp,
     MR_ON_DATA: join(temp, "unused-data"),
   };
-  assert.match(run(cli, ["--help"], { cwd: temp, env }), /用法：mr-on/);
+  assert.match(run(cli, ["--help"], { cwd: temp, env }), /用法：mron/);
   assert.equal(run(cli, ["--version"], { cwd: temp, env }).trim(), pkg.version);
   assert(!readdirSync(temp).includes("unused-data"));
   assert(!readdirSync(temp).includes(".mr-on"));
@@ -113,7 +113,7 @@ try {
     [
       "--input-type=module",
       "-e",
-      `const m = await import(${JSON.stringify(new URL(`file://${resolve(temp, "node_modules/mr-on/dist/src/user-skill.js")}`).href)}); if (!m.loadUnderstandingSkill()) process.exit(1);`,
+      `const m = await import(${JSON.stringify(new URL(`file://${resolve(temp, "node_modules/@verysmallwoods/mron/dist/src/user-skill.js")}`).href)}); if (!m.loadUnderstandingSkill()) process.exit(1);`,
     ],
     { cwd: temp },
   );

@@ -50,7 +50,8 @@ test("CLI shows controlled service recovery guidance but redacts arbitrary error
   const cli = await import("../src/cli.js");
   const config = await import("../src/service-config.js");
   assert.equal(typeof cli.cliErrorMessage, "function");
-  const guidance = "npx 缓存不能作为后台服务路径；请先 npm install -g mr-on";
+  const guidance =
+    "npx 缓存不能作为后台服务路径；请先 npm install -g @verysmallwoods/mron";
   assert.equal(
     cli.cliErrorMessage(new config.ServiceCommandError(guidance)),
     guidance,
@@ -94,7 +95,7 @@ test("executable rejects npx service targets with global-install guidance", asyn
       },
     );
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /npm install -g mr-on/);
+    assert.match(result.stderr, /npm install -g @verysmallwoods\/mron/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

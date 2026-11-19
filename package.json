@@ -1,5 +1,5 @@
 {
-  "name": "mr-on",
+  "name": "@verysmallwoods/mron",
   "version": "0.1.0",
   "type": "module",
   "engines": {
@@ -42,7 +42,7 @@
     "url": "git+https://github.com/sugarforever/mr-on.git"
   },
   "bin": {
-    "mr-on": "dist/src/cli.js"
+    "mron": "dist/src/cli.js"
   },
   "files": [
     "dist/src/*.js",

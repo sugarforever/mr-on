@@ -1,31 +1,29 @@
 # npm 安装与发布
 
 需要 Node.js >=22.19.0。此文描述发布后的安装方式；本 PR 不发布 npm。
-2026-11-18 查询公共 npm registry 时 `mr-on` 返回 E404，名称尚未预留。
-发布前重新确认名称及账号权限；若名称不可用，改用维护者控制的 scope
-（如 `@sugarforever/mr-on`，需先确认 scope 权限），同步 package.json、lockfile 和安装文案。
+npm 包名为 `@verysmallwoods/mron`，安装后的命令为 `mron`。无 scope 的 `mron` 已被其他维护者占用。GitHub 仓库、既有数据目录与服务标识仍使用 mr-on，保持已有数据和服务兼容。
 
 ```sh
-npm install -g mr-on
-mr-on --help
-mr-on start
+npm install -g @verysmallwoods/mron
+mron --help
+mron start
 # 固定版本安装 / 一次性前台试用
-npm install -g mr-on@0.1.0
-npx mr-on@latest
+npm install -g @verysmallwoods/mron@0.1.0
+npx @verysmallwoods/mron@latest
 ```
 
 默认前台运行，仅监听本机，端口 4317。通过 `PORT` 环境变量修改端口。
-`mr-on service --help`、`mr-on client --help` 查看命令。
-使用 `mr-on onboard` 完成模型配置并选择是否安装后台服务；`mr-on configure` 只修改模型设置。详见 [终端引导](onboarding.md) 与 [后台服务](gateway-service.md)。
+`mron service --help`、`mron client --help` 查看命令。
+使用 `mron onboard` 完成模型配置并选择是否安装后台服务；`mron configure` 只修改模型设置。详见 [终端引导](onboarding.md) 与 [后台服务](gateway-service.md)。
 
 所有打包命令的数据路径：`--data PATH` > `MR_ON_DATA` > `~/.mr-on`。
 相对路径按启动时工作目录解析。不要把数据放在 npm 安装目录或 npx 缓存。
 仓库现有 `npm run start`、`npm run client`、`npm run service` 保持原有 `.data` 行为。
-旧用户应明确指定原目录，例如 `mr-on start --data /absolute/path/to/mr-on/.data`；
+旧用户应明确指定原目录，例如 `mron start --data /absolute/path/to/mr-on/.data`；
 不会自动迁移或选择旧数据库。先停止原网关并备份数据，不要复制运行中的 SQLite 文件。
 SQLite 中保存的模型凭据**未加密**；保留目录与文件权限，备份也应按敏感数据处理。
 
-卸载前先停止并卸载已安装的用户服务，再执行 `npm uninstall -g mr-on`。
+卸载前先停止并卸载已安装的用户服务，再执行 `npm uninstall -g @verysmallwoods/mron`。
 卸载 npm 包不删除 `~/.mr-on` 或显式选择的数据目录。
 服务升级、绝对 Node 路径与重新安装注意事项见 [服务说明](gateway-service.md)。
 
@@ -68,8 +66,8 @@ npm audit --audit-level=high
 mkdir -p release-artifacts
 npm pack --json --pack-destination release-artifacts
 # 使用上一步实际生成的文件名
-MR_ON_TARBALL="$PWD/release-artifacts/mr-on-0.1.0.tgz" npm run test:package
-npm publish release-artifacts/mr-on-0.1.0.tgz --access public --ignore-scripts
+MR_ON_TARBALL="$PWD/release-artifacts/verysmallwoods-mron-0.1.0.tgz" npm run test:package
+npm publish release-artifacts/verysmallwoods-mron-0.1.0.tgz --access public --ignore-scripts
 ```
 
 检查 tarball 文件清单及测试结果后再执行最后一行，通过维护者交互认证完成发布。脚本中的版本仅为初次引导示例，必须与实际包版本一致。不要在参数、日志或 PR 中放令牌。发布后核对 registry 元数据，并从无源码目录安装已发布版本。
